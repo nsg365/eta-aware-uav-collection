@@ -11,7 +11,7 @@ deviation from the proposal goes into [DESIGN_DECISIONS.md](DESIGN_DECISIONS.md)
 | 1 | Person 1: Shreya | Simulator realism + reliability (failures, backup CH, retries, delays, drift) | 24 Oct – 3 Nov |
 | 2 | Person 2: Prakruthi | UAV belief state, promise rule, heuristic baselines, ETA lateness + adaptive window | 4 Nov – 12 Nov |
 | 3 | **Nihar Sagar G** | **Reinforcement learning: ns-3 ↔ Python bridge, MDP, PPO, PPO ablations** | 13 Nov – 23 Nov |
-| 4 | Person 4: thiana | Full experiments, statistics, figures, paper/report | 24 Nov – 30 Nov |
+| 4 | Person 4: Thiaana | Full experiments, statistics, figures, paper/report | 24 Nov – 30 Nov |
 
 Already decided (see DESIGN_DECISIONS.md D7): at every contact the UAV promises the CH a return
 time T_k = now + P (P = nominal tour period). Every routing policy, including PPO, works under
@@ -141,7 +141,7 @@ Done when:
 - [ ] Phase 4 can evaluate every PPO variant with one command, documented in
       `docs/handoff/phase3.md`.
 
-## Phase 4 — Experiments, statistics, paper (Person 4 - thiana)
+## Phase 4 — Experiments, statistics, paper (Person 4 - Thiaana)
 
 Goal: the final numbers, figures and write-up, all reproducible from the repository.
 
