@@ -15,7 +15,7 @@ Phase 2 and PPO is Phase 3. See [docs/TEAM_PLAN.md](docs/TEAM_PLAN.md).
 | [docs/INTERFACES.md](docs/INTERFACES.md) | config, topology files, metrics schema |
 | [docs/TEAM_PLAN.md](docs/TEAM_PLAN.md) | four sequential phases, owners, hand-off checklists |
 
-## New to the project? (teammates start here)
+## Teammates start here
 
 1. Set up your machine. **Windows users: follow [docs/SETUP.md](docs/SETUP.md) (WSL2 + Ubuntu
    24.04)** to install the tools, build ns-3.47, and run the tests.
