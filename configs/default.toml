@@ -1,0 +1,20 @@
+# Single-run defaults. [topology] is read by clustering/topology.py (Phase 0, offline).
+# [simulation] keys are passed as --key=value to the ns-3 program; every key, unit and default
+# is documented in simulation/ns3/wsn-uav/config.h. Unlisted keys use those defaults.
+
+[topology]
+num_sensors = 100
+area_m = 500.0
+seed = 1
+sensor_range_m = 80.0      # R_s, 802.15.4 member<->CH range [m]
+dbscan_kappa = 0.8         # DBSCAN eps = kappa * R_s
+dbscan_min_samples = 3
+uav_range_m = 80.0         # R_UAV, horizontal CH<->meeting-point coverage radius [m]
+alpha = 0.5                # CH score weight on residual energy, eq. (3)
+min_candidates = 2         # primary + backup
+depot_x = 0.0
+depot_y = 0.0
+
+[simulation]
+simTime = 7200.0           # [s]
+wakeMode = "scheduled"     # always_on | duty_cycle | scheduled

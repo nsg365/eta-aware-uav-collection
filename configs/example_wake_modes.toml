@@ -1,0 +1,42 @@
+# Example experiment: CH wake modes on identical topologies, traffic and UAV route.
+# Run:  python3 -m experiments.run_experiment configs/example_wake_modes.toml
+#       python3 -m analysis.aggregate results/wake_modes/runs.csv
+
+[experiment]
+name = "wake_modes"
+num_sensors = [60, 100]
+seeds = [1, 2, 3, 4, 5]          # topology seed = ns-3 run number = this value
+
+[topology]                       # Phase 0, see clustering/topology.py
+area_m = 500.0
+sensor_range_m = 80.0
+dbscan_kappa = 0.8
+dbscan_min_samples = 3
+uav_range_m = 80.0
+alpha = 0.5
+min_candidates = 2
+depot_x = 0.0
+depot_y = 0.0
+
+[simulation]                     # shared by all variants; see simulation/ns3/wsn-uav/config.h
+simTime = 7200.0
+routing = "tour"
+initialEnergy = 500.0
+readingRate = 0.1
+uavSpeed = 10.0
+uavSpeedStd = 1.0
+dutyPeriod = 10.0
+dutyListen = 1.0
+wakeHalfWidth = 20.0
+
+[[variant]]
+name = "always_on"               # ablation A5
+wakeMode = "always_on"
+
+[[variant]]
+name = "duty_cycle"              # ablation A6
+wakeMode = "duty_cycle"
+
+[[variant]]
+name = "scheduled_fixed_w"       # TSP + fixed wake baseline (comparison model 4)
+wakeMode = "scheduled"

@@ -1,0 +1,4 @@
+# Keep LF line endings even when cloned on Windows: bash scripts and ns-3 sources run inside WSL.
+* text=auto eol=lf
+*.pdf binary
+*.png binary

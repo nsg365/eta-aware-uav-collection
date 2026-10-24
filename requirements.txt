@@ -1,0 +1,14 @@
+# Exact versions verified with this project (session 1). Needs Python 3.11+ (3.12 recommended:
+# Ubuntu 24.04 / WSL default). Install inside a virtual environment:
+#   python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+numpy==2.4.4
+scipy==1.17.1
+pandas==3.0.2
+scikit-learn==1.7.2
+pytest==9.1.1
+
+# Phase 3 (PPO). Not needed yet; uncomment when Phase 3 starts. torch is a large download.
+# gymnasium==1.2.3
+# stable-baselines3==2.8.0
+# sb3-contrib==2.8.0
+# torch==2.11.0
