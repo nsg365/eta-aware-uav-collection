@@ -1,0 +1,38 @@
+[experiment]
+name = "uav_delay_test"
+num_sensors = [60]
+seeds = [1]
+
+[topology]
+area_m = 500.0
+sensor_range_m = 80.0
+dbscan_kappa = 0.8
+dbscan_min_samples = 3
+uav_range_m = 30.0
+alpha = 0.5
+min_candidates = 2
+depot_x = 0.0
+depot_y = 0.0
+
+[simulation]
+simTime = 600.0
+routing = "tour"
+initialEnergy = 500.0
+readingRate = 0.1
+uavSpeed = 10.0
+uavSpeedStd = 1.0
+dutyPeriod = 10.0
+dutyListen = 1.0
+wakeHalfWidth = 20.0
+uavDelayMin = 1.0
+uavDelayMax = 5.0
+
+[[variant]]
+name = "baseline"
+wakeMode = "scheduled"
+uavDelayProb = 0.0
+
+[[variant]]
+name = "all_legs_delayed"
+wakeMode = "scheduled"
+uavDelayProb = 1.0

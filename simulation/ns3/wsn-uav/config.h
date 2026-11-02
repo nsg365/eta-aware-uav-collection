@@ -38,7 +38,7 @@ struct SimConfig
     double chListenDuty154 = 0.01; // fraction of time a CH keeps 802.15.4 RX on for member slots
 
     // CH Wi-Fi radio energy (ns-3 WifiRadioEnergyModel currents)
-    double wifiTxCurrent = 0.24;
+    double wifiTxCurrent = 0.19; // [A] ESP32 reference: 802.11g TX at 16 dBm
     double wifiRxCurrent = 0.10;
     double wifiIdleCurrent = 0.10;
     double wifiSleepCurrent = 0.00015;
@@ -56,6 +56,12 @@ struct SimConfig
     double uavSpeed = 10.0;
     double uavSpeedStd = 1.0;  // per-leg speed noise; source of ETA error
     double uavMinSpeed = 2.0;
+
+    // Random extra delay applied independently to each UAV flight leg
+    double uavDelayProb = 0.0; // probability of a delay per leg [0, 1]
+    double uavDelayMin = 1.0;  // minimum additional delay [s]
+    double uavDelayMax = 5.0;  // maximum additional delay [s]
+
     double flightPower = 150.0; // [W]
     double hoverPower = 170.0;  // [W]
     double beaconInterval = 0.1;
@@ -70,6 +76,8 @@ struct SimConfig
     double dutyPeriod = 10.0;   // T_b: discovery/duty-cycle period [s]
     double dutyListen = 1.0;    // t_l: listen time per period [s]
     double wakeHalfWidth = 20.0; // fixed half-width w of a scheduled window [s]
+    // Maximum absolute per-CH clock offset [s]
+    double wDrift = 0.0;
     double planTimeout = 0.5;   // CH waits this long after DONE for a PLAN [s]
 
     void Register(ns3::CommandLine& cmd)
@@ -106,6 +114,9 @@ struct SimConfig
         cmd.AddValue("uavSpeed", "Mean UAV cruise speed [m/s]", uavSpeed);
         cmd.AddValue("uavSpeedStd", "Std-dev of per-leg UAV speed [m/s]", uavSpeedStd);
         cmd.AddValue("uavMinSpeed", "Lower clamp on per-leg UAV speed [m/s]", uavMinSpeed);
+        cmd.AddValue("uavDelayProb", "Probability of extra UAV delay per flight leg [0,1]", uavDelayProb);
+        cmd.AddValue("uavDelayMin", "Minimum extra UAV delay [s]", uavDelayMin);
+        cmd.AddValue("uavDelayMax", "Maximum extra UAV delay [s]", uavDelayMax);
         cmd.AddValue("flightPower", "UAV cruise power [W]", flightPower);
         cmd.AddValue("hoverPower", "UAV hover power [W]", hoverPower);
         cmd.AddValue("beaconInterval", "UAV POLL period while hovering [s]", beaconInterval);
@@ -118,6 +129,7 @@ struct SimConfig
         cmd.AddValue("dutyPeriod", "Duty-cycle / discovery period T_b [s]", dutyPeriod);
         cmd.AddValue("dutyListen", "Listen time per duty period t_l [s]", dutyListen);
         cmd.AddValue("wakeHalfWidth", "Fixed scheduled wake-window half-width w [s]", wakeHalfWidth);
+        cmd.AddValue("wDrift", "Maximum absolute per-CH clock offset [s]", wDrift);
         cmd.AddValue("planTimeout", "CH wait for PLAN after upload [s]", planTimeout);
     }
 };

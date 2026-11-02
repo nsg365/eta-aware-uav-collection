@@ -14,11 +14,16 @@ namespace wsnuav
 
 using namespace ns3;
 
-ClusterHeadApp::ClusterHeadApp(World* world, uint32_t cluster, Ptr<WifiPhy> phy, double phase)
+ClusterHeadApp::ClusterHeadApp(World* world,
+                               uint32_t cluster,
+                               Ptr<WifiPhy> phy,
+                               double phase,
+                               double clockOffset)
     : m_w(world),
       m_c(world->clusters.at(cluster)),
       m_phy(phy),
-      m_phase(phase)
+      m_phase(phase),
+      m_clockOffset(clockOffset)
 {
 }
 
@@ -132,6 +137,7 @@ ClusterHeadApp::OpenWindow(double closeAt)
 {
     Wake();
     m_inWindow = true;
+    m_c.windowsOpened++;
     m_windowOpen = Simulator::Now().GetSeconds();
     double in = std::max(0.0, closeAt - m_windowOpen);
     m_windowClose = Simulator::Schedule(Seconds(in), &ClusterHeadApp::CloseWindow, this);
@@ -171,6 +177,10 @@ ClusterHeadApp::Receive(Ptr<Socket> socket)
                 m_c.windowsMet++;
                 m_c.windowListenTime += Simulator::Now().GetSeconds() - m_windowOpen;
             }
+            else
+            {
+                m_c.discoveryContacts++;
+            }
             Wake();
             m_busy = true;
             m_contactSent = 0;
@@ -184,16 +194,24 @@ ClusterHeadApp::Receive(Ptr<Socket> socket)
             double now = Simulator::Now().GetSeconds();
             double eta = m.timeNs * 1e-9;
             double w = m.halfWidthNs * 1e-9;
+
+            // Apply this CH's fixed clock offset to its interpretation of the ETA.
+            double adjustedEta = eta - m_clockOffset;
+
             m_c.windowsScheduled++;
-            if (eta - w > now)
+
+            if (adjustedEta - w > now)
             {
                 Sleep();
                 m_cycleEvent =
-                    Simulator::Schedule(Seconds(eta - w - now), &ClusterHeadApp::OpenWindow, this, eta + w);
+                    Simulator::Schedule(Seconds(adjustedEta - w - now),
+                                    &ClusterHeadApp::OpenWindow,
+                                    this,
+                                    adjustedEta + w);
             }
             else
             {
-                OpenWindow(eta + w);
+                OpenWindow(adjustedEta + w);
             }
         }
     }

@@ -22,7 +22,10 @@ namespace wsnuav
 class UavApp : public ns3::Application
 {
   public:
-    UavApp(World* world, std::unique_ptr<RoutingPolicy> policy, ns3::Ptr<ns3::NormalRandomVariable> speed);
+    UavApp(World* world,
+       std::unique_ptr<RoutingPolicy> policy,
+       ns3::Ptr<ns3::NormalRandomVariable> speed,
+       ns3::Ptr<ns3::UniformRandomVariable> delay);
 
   private:
     void StartApplication() override;
@@ -45,6 +48,7 @@ class UavApp : public ns3::Application
     World* m_w;
     std::unique_ptr<RoutingPolicy> m_policy;
     ns3::Ptr<ns3::NormalRandomVariable> m_speed;
+    ns3::Ptr<ns3::UniformRandomVariable> m_delay;
     ns3::Ptr<ns3::WaypointMobilityModel> m_mob;
     ns3::Ptr<ns3::Socket> m_socket;
 

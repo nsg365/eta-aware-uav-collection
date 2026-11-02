@@ -20,10 +20,14 @@ namespace
 constexpr double END_GUARD = 0.05; // time to let the PLAN frame leave before departing [s]
 } // namespace
 
-UavApp::UavApp(World* world, std::unique_ptr<RoutingPolicy> policy, Ptr<NormalRandomVariable> speed)
+UavApp::UavApp(World* world,
+               std::unique_ptr<RoutingPolicy> policy,
+               Ptr<NormalRandomVariable> speed,
+               Ptr<UniformRandomVariable> delay)
     : m_w(world),
       m_policy(std::move(policy)),
       m_speed(speed),
+      m_delay(delay),
       m_promise(world->clusters.size(), -1.0)
 {
 }
@@ -57,6 +61,7 @@ UavApp::StopApplication()
     m_endEvent.Cancel();
 }
 
+
 void
 UavApp::Depart()
 {
@@ -69,22 +74,37 @@ UavApp::Depart()
     Vector to(c.meetX, c.meetY, cfg.uavAltitude);
     double d = CalculateDistance(from, to);
     double v = std::max(cfg.uavMinSpeed, m_speed->GetValue());
-    double t = d / v;
+    double flightTime = d / v;
 
-    // Pin the current position at `now` so the model does not interpolate across the hover
-    // (waypoint times must be strictly increasing, so skip it at the initial depot waypoint).
+    // Independently decide whether this flight leg experiences an extra delay.
+    double delay = 0.0;
+    if (m_delay->GetValue() < cfg.uavDelayProb)
+    {
+        delay = cfg.uavDelayMin + m_delay->GetValue() * (cfg.uavDelayMax - cfg.uavDelayMin);
+    }
+
+    double totalTime = flightTime + delay;
+
+    // Pin the current position so the mobility model does not interpolate
+    // across the previous hover.
     if (now > m_lastWaypoint)
     {
         m_mob->AddWaypoint(Waypoint(Seconds(now), from));
     }
-    m_lastWaypoint = now + t;
-    m_mob->AddWaypoint(Waypoint(Seconds(now + t), to));
-    m_w->uavDistance += d;
-    m_w->uavFlightTime += t;
 
-    m_visit = VisitRecord{k, now, now + t, -1.0, -1.0, d, m_promise[k], 0};
+    m_lastWaypoint = now + totalTime;
+    m_mob->AddWaypoint(Waypoint(Seconds(now + totalTime), to));
+
+    m_w->uavDistance += d;
+    m_w->uavFlightTime += totalTime;
+    m_w->uavDelayTime += delay;
+
+    m_visit = VisitRecord{
+        k, now, now + totalTime, -1.0, -1.0, d, m_promise[k], 0
+    };
     m_promise[k] = -1.0;
-    Simulator::Schedule(Seconds(t), &UavApp::Arrive, this);
+
+    Simulator::Schedule(Seconds(totalTime), &UavApp::Arrive, this);
 }
 
 void

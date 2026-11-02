@@ -1,0 +1,41 @@
+[experiment]
+name = "clock_drift_narrow_metrics_v3"
+num_sensors = [60]
+seeds = [1, 2, 3, 4, 5]
+
+[topology]
+area_m = 500.0
+sensor_range_m = 80.0
+dbscan_kappa = 0.8
+dbscan_min_samples = 3
+uav_range_m = 30.0
+alpha = 0.5
+min_candidates = 2
+depot_x = 0.0
+depot_y = 0.0
+
+[simulation]
+simTime = 600.0
+routing = "tour"
+initialEnergy = 500.0
+readingRate = 0.1
+uavSpeed = 10.0
+uavSpeedStd = 1.0
+dutyPeriod = 10.0
+dutyListen = 1.0
+wakeHalfWidth = 2.0
+uavDelayMin = 1.0
+uavDelayMax = 5.0
+wDrift = 5.0
+
+[[variant]]
+name = "no_clock_drift"
+wakeMode = "scheduled"
+uavDelayProb = 0.0
+wDrift = 0.0
+
+[[variant]]
+name = "clock_drift_5s"
+wakeMode = "scheduled"
+uavDelayProb = 0.0
+wDrift = 5.0

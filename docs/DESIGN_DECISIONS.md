@@ -160,13 +160,33 @@ have no defined estimator.
 It is a target coverage probability, not a derived constant. Sweep p_q ∈ {0.8, 0.9, 0.95, 0.99}
 and report CH listening energy vs meeting success. The knee of that curve is the justification.
 
-## D11. Energy scale — Decided (assumption, needs citation)
+## D11. Energy scale and radio parameters — Decided (with documented assumptions)
 
-E0 = 500 J per sensor (about 2 % of a 2×AA pack, ≈ 27 kJ) so that depletion happens within a 2 h
-simulated horizon. Lifetimes scale with E0 at constant power; compare variants relatively.
-Wi-Fi currents (TX 0.24 A, RX/idle 0.10 A, sleep 0.15 mA at 3 V) and 802.15.4 powers (TX 52.2 mW,
-RX 56.4 mW) are representative values. **Phase 1 must replace them with cited datasheet
-values** before results are reported.
+**Initial energy.** Each sensor starts with \(E_0 = 500\) J. This is a simulation assumption selected to allow energy depletion within the 2-hour simulation horizon; it is not a measured battery capacity. Results should be compared across variants using the same energy budget.
+
+**802.15.4 member-to-CH link.** The analytical energy model uses a 3 V supply and the following CC2420 reference-radio values:
+
+| Parameter | Value | Basis |
+|---|---:|---|
+| TX current | 17.4 mA | Texas Instruments CC2420 datasheet |
+| RX current | 18.8 mA | Texas Instruments CC2420 datasheet |
+| TX power | 52.2 mW | 3 V × 17.4 mA |
+| RX power | 56.4 mW | 3 V × 18.8 mA |
+
+These powers are used by the analytical 802.15.4 energy ledger (D1); the member-to-CH packet exchange is not simulated using ns-3's LR-WPAN model.
+
+**Wi-Fi CH-to-UAV link.** The simulated link uses ns-3 802.11g. The current parameters are reference-device approximations, not a claim that the simulated cluster head is a particular physical device.
+
+| Parameter | Value | Basis |
+|---|---:|---|
+| TX current | 190 mA | ESP32 reference: typical 802.11g TX at 16 dBm |
+| RX current | 100 mA | Approximation within the ESP32 datasheet's typical receive-current range |
+| Idle current | 100 mA | Approximation using receive/listen current |
+| Sleep current | 0.15 mA | Simulation assumption; not established here as a directly equivalent ESP32 radio-sleep measurement |
+
+The Wi-Fi currents configure ns-3's `WifiRadioEnergyModel`. The supply voltage used for energy accounting is 3 V. Actual current depends on hardware, radio state, transmit power, and operating conditions; these values should therefore be treated as a documented reference model rather than universal device characteristics.
+
+**Reproducibility.** Energy comparisons must use the same parameters across the compared variants. Report these assumptions alongside energy and lifetime results, and revisit the sleep-current assumption if a more closely matched radio-state measurement is identified.
 
 ## D12–D17. Smaller modelling choices — Decided
 
@@ -197,3 +217,24 @@ Simplify first, add back only if an ablation shows a gain:
   before claiming it.
 - Shannon planning rate (7): use the configured ns-3 PHY rate instead.
 - The 9-feature quantile MLP: start with an empirical quantile per (distance, stops-ahead) bin.
+
+### UAV–Cluster Head Wi-Fi Range Calibration
+
+**Decision:** Use `uav_range_m = 30.0 m` as the initial horizontal coverage radius for topology construction and cluster-head meeting-point feasibility.
+
+**Method:** A separate ns-3.47 calibration experiment used two Wi-Fi nodes, a 30 m UAV altitude, 802.11g at 6 Mbps, 16 dBm transmit power, a log-distance propagation model (path-loss exponent 3.0), and Nakagami fading. Each run attempted 1,000 UDP packets. Five random seeds were tested at each distance.
+
+**Results:**
+
+| Horizontal distance | Mean delivery ratio | Minimum across five seeds |
+|---:|---:|---:|
+| 30 m | 99.96% | 99.9% |
+| 35 m | 97.60% | 89.7% |
+| 40 m | 92.46% | 86.0% |
+| 42 m | 73.76% | 54.6% |
+
+At 30 m, 4,998 of 5,000 packets were delivered. Delivery degraded and became more variable at larger distances.
+
+**Rationale:** The 30 m radius is a conservative initial choice based on the tested simulation configuration and a target of at least 99% delivery in each of the five tested seeds. The parameter represents horizontal CH-to-meeting-point distance, consistent with the topology feasibility check.
+
+**Limitations:** This experiment is a simulation calibration, not a measurement of real-world Wi-Fi range. Results depend on the propagation model, fading, PHY/MAC settings, altitude, traffic pattern, and random seed. Five seeds are limited evidence; the selected radius should be revisited if the simulation configuration changes. The topology radius is a feasibility constraint, not a hard cutoff in the ns-3 radio model.

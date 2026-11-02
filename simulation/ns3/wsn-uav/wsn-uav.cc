@@ -43,8 +43,10 @@ namespace
 constexpr int64_t STREAM_TRAFFIC = 0; // + sensor id
 constexpr int64_t STREAM_LOSS154 = 100000;
 constexpr int64_t STREAM_SPEED = 100001;
+constexpr int64_t STREAM_UAV_DELAY = 100003;
 constexpr int64_t STREAM_PHASE = 100002;
 constexpr int64_t STREAM_WIFI = 200000;
+constexpr int64_t STREAM_CLOCK_DRIFT = 100004;
 
 World g_world;
 std::vector<Ptr<ExponentialRandomVariable>> g_interArrival;
@@ -114,6 +116,12 @@ Validate(const SimConfig& c, const RoutingPolicy& policy)
                     "wakeMode=scheduled needs a routing policy that commits to a visit order "
                     "(see docs/DESIGN_DECISIONS.md D7)");
     NS_ABORT_MSG_IF(c.dutyListen <= 0 || c.dutyListen >= c.dutyPeriod, "need 0 < dutyListen < dutyPeriod");
+    NS_ABORT_MSG_IF(c.uavDelayProb < 0.0 || c.uavDelayProb > 1.0,
+                    "uavDelayProb must be in [0, 1]");
+    NS_ABORT_MSG_IF(c.uavDelayMin < 0.0 || c.uavDelayMax < c.uavDelayMin,
+                    "need 0 <= uavDelayMin <= uavDelayMax");
+    NS_ABORT_MSG_IF(c.wDrift < 0.0,
+                    "wDrift must be non-negative");
     if (c.contactWait < c.dutyPeriod + c.dutyListen)
     {
         std::cerr << "warning: contactWait < dutyPeriod + dutyListen; a duty-cycled CH may be "
@@ -235,13 +243,17 @@ main(int argc, char* argv[])
     Ptr<UniformRandomVariable> phase = CreateObject<UniformRandomVariable>();
     phase->SetAttribute("Max", DoubleValue(cfg.dutyPeriod));
     phase->SetStream(STREAM_PHASE);
+    Ptr<UniformRandomVariable> clockDrift = CreateObject<UniformRandomVariable>();
+    clockDrift->SetAttribute("Min", DoubleValue(-cfg.wDrift));
+    clockDrift->SetAttribute("Max", DoubleValue(cfg.wDrift));
+    clockDrift->SetStream(STREAM_CLOCK_DRIFT);
     for (size_t i = 0; i < wifiSensors.size(); ++i)
     {
         const Sensor& s = g_world.sensors[wifiSensors[i]];
         Ptr<WifiPhy> p = g_wifiDev[s.id]->GetPhy();
         if (s.role == Role::PRIMARY)
         {
-            auto app = CreateObject<ClusterHeadApp>(&g_world, s.cluster, p, phase->GetValue());
+            auto app = CreateObject<ClusterHeadApp>(&g_world, s.cluster, p, phase->GetValue(), clockDrift->GetValue());
             chNodes.Get(i)->AddApplication(app);
             app->SetStartTime(Seconds(0));
             app->SetStopTime(Seconds(cfg.simTime));
@@ -257,7 +269,11 @@ main(int argc, char* argv[])
     speed->SetAttribute("Mean", DoubleValue(cfg.uavSpeed));
     speed->SetAttribute("Variance", DoubleValue(cfg.uavSpeedStd * cfg.uavSpeedStd));
     speed->SetStream(STREAM_SPEED);
-    auto uav = CreateObject<UavApp>(&g_world, std::move(policy), speed);
+
+    Ptr<UniformRandomVariable> uavDelay = CreateObject<UniformRandomVariable>();
+    uavDelay->SetStream(STREAM_UAV_DELAY);
+
+    auto uav = CreateObject<UavApp>(&g_world, std::move(policy), speed, uavDelay);
     uavNode->AddApplication(uav);
     uav->SetStartTime(Seconds(0));
     uav->SetStopTime(Seconds(cfg.simTime));

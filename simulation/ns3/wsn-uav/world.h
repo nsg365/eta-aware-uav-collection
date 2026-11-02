@@ -56,9 +56,11 @@ struct Cluster
 
     // Contact / wake accounting
     uint32_t visits = 0, contacts = 0, failedContacts = 0;
-    uint32_t windowsScheduled = 0, windowsMet = 0, windowsMissed = 0;
-    double windowListenTime = 0; // time awake inside scheduled windows [s]
-    double wifiAwakeTime = 0;    // total CH Wi-Fi non-sleep time [s]
+    uint32_t discoveryContacts = 0;
+    uint32_t windowsScheduled = 0, windowsOpened = 0;
+    uint32_t windowsMet = 0, windowsMissed = 0;
+    double windowListenTime = 0;
+    double wifiAwakeTime = 0;
 };
 
 struct VisitRecord
@@ -80,7 +82,10 @@ class World
     std::vector<uint32_t> tourOrder; // cluster ids in survey-tour order
 
     // UAV totals
-    double uavDistance = 0, uavFlightTime = 0, uavHoverTime = 0;
+    double uavDistance = 0;
+    double uavFlightTime = 0; // includes additional delay time [s]
+    double uavDelayTime = 0;  // additional delay component of flight time [s]
+    double uavHoverTime = 0;
 
     void LoadTopology(const std::string& dir);
 

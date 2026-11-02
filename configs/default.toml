@@ -9,7 +9,7 @@ seed = 1
 sensor_range_m = 80.0      # R_s, 802.15.4 member<->CH range [m]
 dbscan_kappa = 0.8         # DBSCAN eps = kappa * R_s
 dbscan_min_samples = 3
-uav_range_m = 80.0         # R_UAV, horizontal CH<->meeting-point coverage radius [m]
+uav_range_m = 30.0         # R_UAV, horizontal CH<->meeting-point coverage radius [m]
 alpha = 0.5                # CH score weight on residual energy, eq. (3)
 min_candidates = 2         # primary + backup
 depot_x = 0.0

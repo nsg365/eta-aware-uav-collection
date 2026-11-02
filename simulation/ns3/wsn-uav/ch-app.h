@@ -23,7 +23,11 @@ namespace wsnuav
 class ClusterHeadApp : public ns3::Application
 {
   public:
-    ClusterHeadApp(World* world, uint32_t cluster, ns3::Ptr<ns3::WifiPhy> phy, double phase);
+    ClusterHeadApp(World* world,
+               uint32_t cluster,
+               ns3::Ptr<ns3::WifiPhy> phy,
+               double phase,
+               double clockOffset);
 
     // Called by the energy check when the primary CH's battery is exhausted.
     void OnDeath();
@@ -54,6 +58,7 @@ class ClusterHeadApp : public ns3::Application
     ns3::Ptr<ns3::Socket> m_socket;
     ns3::Address m_uav;
     double m_phase;
+    double m_clockOffset;
 
     bool m_dead = false;
     bool m_wantAwake = false;

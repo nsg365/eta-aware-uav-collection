@@ -249,7 +249,8 @@ World::WriteOutputs(double wallSeconds) const
     double eFlight = cfg.flightPower * uavFlightTime;
     double eHover = cfg.hoverPower * uavHoverTime;
     uint32_t nVisits = 0, nContacts = 0, nFailed = 0;
-    uint32_t wSched = 0, wMet = 0, wMissed = 0;
+    uint32_t wSched = 0, wOpened = 0, wMet = 0, wMissed = 0;
+    uint32_t discoveryContacts = 0;
     double wListen = 0, awake = 0;
     for (const auto& c : clusters)
     {
@@ -257,8 +258,10 @@ World::WriteOutputs(double wallSeconds) const
         nContacts += c.contacts;
         nFailed += c.failedContacts;
         wSched += c.windowsScheduled;
+        wOpened += c.windowsOpened;
         wMet += c.windowsMet;
         wMissed += c.windowsMissed;
+        discoveryContacts += c.discoveryContacts;
         wListen += c.windowListenTime;
         awake += c.wifiAwakeTime;
     }
@@ -318,17 +321,27 @@ World::WriteOutputs(double wallSeconds) const
       << ", \"lifetime_x_s\": " << ltx << ", \"lifetime_x_censored\": " << (ltxCensored ? "true" : "false")
       << ", \"dead_nodes_at_end\": " << deaths.size() << "},\n"
       << "  \"uav\": {\"distance_m\": " << uavDistance << ", \"flight_time_s\": " << uavFlightTime
+      << ", \"delay_time_s\": " << uavDelayTime
       << ", \"hover_time_s\": " << uavHoverTime << ", \"flight_energy_J_est\": " << eFlight
       << ", \"hover_energy_J_est\": " << eHover << ", \"visits\": " << nVisits
       << ", \"contacts\": " << nContacts << ", \"failed_contacts\": " << nFailed
       << ", \"bytes_per_uav_joule\": "
       << nan(eFlight + eHover > 0, del * double(cfg.readingBytes) / (eFlight + eHover)) << "},\n"
-      << "  \"wake\": {\"windows_scheduled\": " << wSched << ", \"windows_met\": " << wMet
-      << ", \"windows_missed\": " << wMissed << ", \"meeting_success_rate\": "
-      << nan(wClosed > 0, double(wMet) / wClosed) << ", \"planned_window_width_s\": "
-      << nan(cfg.wakeMode == "scheduled", 2 * cfg.wakeHalfWidth) << ", \"mean_window_listen_s\": "
-      << nan(wClosed > 0, wListen / wClosed) << ", \"ch_wifi_awake_fraction\": "
-      << awake / (K * T) << "},\n"
+      << "  \"wake\": {\"windows_scheduled\": " << wSched
+<< ", \"windows_opened\": " << wOpened
+<< ", \"windows_met\": " << wMet
+<< ", \"windows_missed\": " << wMissed
+<< ", \"discovery_contacts\": " << discoveryContacts
+<< ", \"meeting_success_rate\": "
+<< nan(wClosed > 0, double(wMet) / wClosed)
+<< ", \"missed_window_fraction\": "
+<< nan(wClosed > 0, double(wMissed) / wClosed)
+<< ", \"planned_window_width_s\": "
+<< nan(cfg.wakeMode == "scheduled", 2 * cfg.wakeHalfWidth)
+<< ", \"mean_window_listen_s\": "
+<< nan(wClosed > 0, wListen / wClosed)
+<< ", \"ch_wifi_awake_fraction\": "
+<< awake / (K * T) << "},\n"
       << "  \"eta\": {\"n\": " << nEta << ", \"mean_signed_error_s\": " << nan(nEta > 0, sumSigned / nEta)
       << ", \"mae_s\": " << nan(nEta > 0, sumAbs / nEta)
       << ", \"rmse_s\": " << nan(nEta > 0, std::sqrt(sumSq / std::max(nEta, 1U)))
@@ -337,15 +350,18 @@ World::WriteOutputs(double wallSeconds) const
 
     std::ofstream pc(cfg.outDir + "/per_cluster.csv");
     pc << "cluster_id,size,generated,delivered,overflow,lost_154,lost_wifi,lost_ch_dead,in_buffer,"
-          "visits,contacts,failed_contacts,windows_scheduled,windows_met,windows_missed,"
-          "wifi_awake_s,residual_fraction\n";
+      "visits,contacts,failed_contacts,discovery_contacts,"
+      "windows_scheduled,windows_opened,windows_met,windows_missed,"
+      "wifi_awake_s,residual_fraction\n";
     for (size_t k = 0; k < K; ++k)
     {
         const auto& c = clusters[k];
         pc << c.id << "," << c.size << "," << c.generated << "," << c.delivered << "," << c.overflow
            << "," << c.lost154 << "," << c.sentWifi - c.delivered << "," << c.lostChDead << ","
            << c.buffer << "," << c.visits << "," << c.contacts << "," << c.failedContacts << ","
-           << c.windowsScheduled << "," << c.windowsMet << "," << c.windowsMissed << ","
+           << c.discoveryContacts << ","
+           << c.windowsScheduled << "," << c.windowsOpened << ","
+           << c.windowsMet << "," << c.windowsMissed << ","
            << c.wifiAwakeTime << "," << clusterResidual[k] / (cfg.initialEnergy * c.size) << "\n";
     }
 
