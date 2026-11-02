@@ -16,11 +16,13 @@ using namespace ns3;
 
 ClusterHeadApp::ClusterHeadApp(World* world,
                                uint32_t cluster,
+                               uint32_t sensorId,
                                Ptr<WifiPhy> phy,
                                double phase,
                                double clockOffset)
     : m_w(world),
       m_c(world->clusters.at(cluster)),
+      m_sensorId(sensorId),
       m_phy(phy),
       m_phase(phase),
       m_clockOffset(clockOffset)
@@ -167,7 +169,9 @@ ClusterHeadApp::Receive(Ptr<Socket> socket)
         {
             continue;
         }
-        if (m.type == MsgType::POLL && !m_busy)
+        if (m.type == MsgType::POLL &&
+            !m_busy &&
+            m_w->clusters[m_c.id].primary == m_sensorId)
         {
             m_cycleEvent.Cancel();
             if (m_inWindow)
@@ -232,6 +236,7 @@ ClusterHeadApp::SendNextFrame()
     {
         m.type = MsgType::DATA;
         m.count = n;
+        m.primaryId = m_sensorId;
         m_socket->SendTo(MakePacket(m, n * cfg.readingBytes), 0, m_uav);
         m_c.buffer -= n;
         m_c.sentWifi += n;
@@ -241,6 +246,7 @@ ClusterHeadApp::SendNextFrame()
     }
     m.type = MsgType::DONE;
     m.count = static_cast<uint32_t>(m_contactSent);
+    m.primaryId = m_sensorId;
     m_socket->SendTo(MakePacket(m), 0, m_uav);
     m_planTimeout = Simulator::Schedule(Seconds(cfg.planTimeout), &ClusterHeadApp::PlanTimeout, this);
 }
@@ -276,9 +282,16 @@ ClusterHeadApp::OnDeath()
     m_windowClose.Cancel();
     m_sendEvent.Cancel();
     m_planTimeout.Cancel();
+    m_c.bufferLostAtFailure = m_c.buffer;
     m_c.lostChDead += m_c.buffer;
     m_c.buffer = 0;
-    m_phy->SetOffMode();
+
+    // SetOffMode is invalid when the PHY is already sleeping or off.
+    // Leave those states unchanged; the dead app has cancelled its events.
+    if (!m_phy->IsStateSleep() && !m_phy->IsStateOff())
+    {
+        m_phy->SetOffMode();
+    }
 }
 
 } // namespace wsnuav

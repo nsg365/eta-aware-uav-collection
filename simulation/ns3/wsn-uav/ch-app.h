@@ -25,6 +25,7 @@ class ClusterHeadApp : public ns3::Application
   public:
     ClusterHeadApp(World* world,
                uint32_t cluster,
+               uint32_t sensorId,
                ns3::Ptr<ns3::WifiPhy> phy,
                double phase,
                double clockOffset);
@@ -54,6 +55,7 @@ class ClusterHeadApp : public ns3::Application
 
     World* m_w;
     Cluster& m_c;
+    uint32_t m_sensorId;
     ns3::Ptr<ns3::WifiPhy> m_phy;
     ns3::Ptr<ns3::Socket> m_socket;
     ns3::Address m_uav;

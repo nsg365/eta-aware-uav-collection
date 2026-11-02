@@ -20,6 +20,8 @@ enum class MsgType : uint8_t
     DATA = 2, // CH -> UAV: `count` readings (payload padded to count * readingBytes)
     DONE = 3, // CH -> UAV: upload finished, `count` = readings sent in this contact
     PLAN = 4, // UAV -> CH: next promised arrival `timeNs` and window half-width `halfWidthNs`
+    HEARTBEAT = 5,
+    CH_UPDATE = 6
 };
 
 struct Msg
@@ -30,6 +32,7 @@ struct Msg
     uint32_t count = 0;
     int64_t timeNs = 0;
     int64_t halfWidthNs = 0;
+    uint32_t primaryId = 0;
 };
 
 inline ns3::Ptr<ns3::Packet>

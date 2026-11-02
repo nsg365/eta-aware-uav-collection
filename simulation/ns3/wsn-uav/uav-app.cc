@@ -30,6 +30,28 @@ UavApp::UavApp(World* world,
       m_delay(delay),
       m_promise(world->clusters.size(), -1.0)
 {
+    m_activePrimary.reserve(world->clusters.size());
+    for (const auto& cluster : world->clusters)
+    {
+        m_activePrimary.push_back(cluster.primary);
+    }
+}
+
+void
+UavApp::SetActivePrimary(uint32_t clusterId, uint32_t sensorId)
+{
+    if (clusterId >= m_activePrimary.size())
+    {
+        NS_LOG_WARN("Invalid cluster ID in SetActivePrimary: " << clusterId);
+        return;
+    }
+
+    m_activePrimary[clusterId] = sensorId;
+
+    NS_LOG_INFO(
+        Simulator::Now().GetSeconds()
+        << "s UAV updated active primary for cluster "
+        << clusterId << " to sensor " << sensorId);
 }
 
 void
@@ -216,10 +238,19 @@ UavApp::Receive(Ptr<Socket> socket)
             continue;
         }
         Cluster& c = m_w->clusters[m.cluster];
+
+        // Ignore packets from a CH that is no longer the active primary.
+        if ((m.type == MsgType::DATA || m.type == MsgType::DONE) &&
+            m.primaryId != m_activePrimary[m.cluster])
+        {
+            continue;
+        }
+
         if (m.type == MsgType::DATA)
         {
             c.delivered += m.count; // counted even if it arrives late, it reached the UAV
         }
+
         bool current = m_hovering && m.cluster == m_visit.cluster;
         if (!current || (m.type != MsgType::DATA && m.type != MsgType::DONE))
         {

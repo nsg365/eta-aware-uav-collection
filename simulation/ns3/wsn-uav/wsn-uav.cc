@@ -47,12 +47,15 @@ constexpr int64_t STREAM_UAV_DELAY = 100003;
 constexpr int64_t STREAM_PHASE = 100002;
 constexpr int64_t STREAM_WIFI = 200000;
 constexpr int64_t STREAM_CLOCK_DRIFT = 100004;
+constexpr int64_t STREAM_CH_FAILURE = 100005;
 
 World g_world;
 std::vector<Ptr<ExponentialRandomVariable>> g_interArrival;
 Ptr<UniformRandomVariable> g_loss154;
+Ptr<UniformRandomVariable> g_chFailureRv;
 std::map<uint32_t, Ptr<ClusterHeadApp>> g_chApp;    // sensor id -> app (primaries)
 std::map<uint32_t, Ptr<WifiNetDevice>> g_wifiDev;   // sensor id -> device (primaries, backups)
+Ptr<UavApp> g_uavApp;
 
 void
 GenerateReading(uint32_t id)
@@ -88,8 +91,178 @@ CheckEnergy()
         {
             dv->second->GetPhy()->SetOffMode();
         }
+
+        // Re-elect a standby if this sensor was assigned as backup
+        // and the cluster's primary is still alive.
+        for (auto& c : g_world.clusters)
+        {
+            if (c.backup == static_cast<int32_t>(s.id) &&
+                c.primary != s.id &&
+                g_world.sensors.at(c.primary).alive)
+            {
+                const int32_t replacement =
+                    g_world.ElectBackup(c.id, now);
+
+                NS_LOG_INFO(
+                    now << "s standby sensor " << s.id
+                        << " died; replacement backup for cluster "
+                        << c.id << " is " << replacement);
+            }
+        }
     }
     Simulator::Schedule(Seconds(g_world.cfg.energyCheckInterval), &CheckEnergy);
+}
+
+void
+ReplicateBuffers()
+{
+    g_world.ReplicateBuffers();
+
+    Simulator::Schedule(
+        Seconds(g_world.cfg.replicationInterval),
+        &ReplicateBuffers);
+}
+
+void
+CheckPrimaryHeartbeats()
+{
+    const double now = Simulator::Now().GetSeconds();
+
+    for (auto& c : g_world.clusters)
+    {
+        // A detected failure remains latched if takeover fails. Successful takeover
+        // re-arms this cluster so a later promoted-primary failure is detectable.
+        if (c.primaryFailureDetected)
+        {
+            continue;
+        }
+
+        Sensor& primaryForFailure = g_world.sensors.at(c.primary);
+
+        // Inject primary CH failures according to an exponential hazard rate.
+        // Convert the configured rate [1/s] into probability per check interval.
+        const double failureProbability =
+            1.0 - std::exp(-g_world.cfg.chFailureRate *
+                           g_world.cfg.heartbeatInterval);
+
+        if (primaryForFailure.alive &&
+            g_world.cfg.chFailureRate > 0.0 &&
+            g_chFailureRv->GetValue() < failureProbability)
+        {
+            primaryForFailure.alive = false;
+            primaryForFailure.deathTime = now;
+
+            if (auto app = g_chApp.find(primaryForFailure.id);
+                app != g_chApp.end())
+            {
+                app->second->OnDeath();
+            }
+
+            NS_LOG_INFO(
+                now << "s random primary failure injected for cluster "
+                    << c.id << ", primary sensor " << primaryForFailure.id);
+        }
+
+        const Sensor& primary = primaryForFailure;
+
+        if (!primary.alive)
+        {
+            c.missedHeartbeatCount++;
+
+            if (c.missedHeartbeatCount >= g_world.cfg.missedHeartbeats
+    && !c.primaryFailureDetected)
+            {
+                c.primaryFailureDetected = true;
+                c.primaryFailureDetectedTime = now;
+                c.primaryFailures++;
+
+                const uint32_t failedPrimaryId = c.primary;
+
+                NS_LOG_INFO(
+                    now << "s primary failure detected for cluster "
+                        << c.id << ", primary sensor " << failedPrimaryId);
+
+                // Attempt backup promotion.
+                if (c.backup >= 0)
+                {
+                    const uint32_t backupId =
+                    static_cast<uint32_t>(c.backup);
+
+                    if (g_world.PromoteBackup(c.id, now))
+                    {
+                        // Remove the failed primary from the active CH app map.
+                        g_chApp.erase(failedPrimaryId);
+
+                        // Retrieve the promoted backup's Wi-Fi device and PHY.
+                        Ptr<WifiNetDevice> backupDevice =
+                        g_wifiDev.at(backupId);
+
+                        Ptr<WifiPhy> backupPhy =
+                            backupDevice->GetPhy();
+
+                        // Create a new CH application for the promoted backup.
+                        auto promotedApp = CreateObject<ClusterHeadApp>(
+                            &g_world,
+                            c.id,
+                            backupId,
+                            backupPhy,
+                            0.0,
+                            0.0);
+
+                        // Attach the application to the backup's node.
+                        backupDevice->GetNode()->AddApplication(promotedApp);
+
+                        // Start the application immediately at failover time.
+                        promotedApp->SetStartTime(Seconds(now));
+                        promotedApp->SetStopTime(Seconds(g_world.cfg.simTime));
+
+                        // Register the promoted backup as the active CH.
+                        g_chApp[backupId] = promotedApp;
+
+                        // Synchronize the UAV's active-primary record.
+                        g_uavApp->SetActivePrimary(c.id, backupId);
+
+                        // Re-elect a feasible, live standby using the original Eq. (3)
+                        // score; all feasible candidates were radio-provisioned at setup.
+                        const int32_t replacementBackup = g_world.ElectBackup(c.id, now);
+                        c.missedHeartbeatCount = 0;
+                        c.primaryFailureDetected = false;
+
+                        NS_LOG_INFO(now << "s replacement backup for cluster " << c.id
+                                        << " is " << replacementBackup);
+
+                        NS_LOG_INFO(
+                            now << "s backup sensor " << backupId
+                                << " promoted to primary for cluster " << c.id);
+                    }
+                    else
+{
+    c.failuresBackupDead++;
+
+    NS_LOG_WARN(
+     now << "s backup promotion failed for cluster " << c.id
+         << " because backup sensor " << backupId << " is dead");
+}
+            }
+            else
+{
+    c.failuresNoBackup++;
+
+    NS_LOG_WARN(
+         now << "s no backup available for cluster " << c.id);
+}
+        }
+        }
+        else
+        {
+            // A living primary is treated as having delivered its heartbeat.
+            c.missedHeartbeatCount = 0;
+        }
+    }
+
+    Simulator::Schedule(
+        Seconds(g_world.cfg.heartbeatInterval),
+        &CheckPrimaryHeartbeats);
 }
 
 Vector
@@ -122,6 +295,25 @@ Validate(const SimConfig& c, const RoutingPolicy& policy)
                     "need 0 <= uavDelayMin <= uavDelayMax");
     NS_ABORT_MSG_IF(c.wDrift < 0.0,
                     "wDrift must be non-negative");
+
+    NS_ABORT_MSG_IF(c.chFailureRate < 0.0,
+                    "chFailureRate must be >= 0");
+
+    NS_ABORT_MSG_IF(c.heartbeatInterval <= 0.0,
+                    "heartbeatInterval must be > 0");
+
+    NS_ABORT_MSG_IF(c.missedHeartbeats == 0,
+                    "missedHeartbeats must be >= 1");
+
+    NS_ABORT_MSG_IF(c.replicationInterval <= 0.0,
+                    "replicationInterval must be > 0");
+
+    NS_ABORT_MSG_IF(c.retryInterval <= 0.0,
+                    "retryInterval must be > 0");
+
+    NS_ABORT_MSG_IF(c.maxMissedRetries == 0,
+                    "maxMissedRetries must be >= 1");
+
     if (c.contactWait < c.dutyPeriod + c.dutyListen)
     {
         std::cerr << "warning: contactWait < dutyPeriod + dutyListen; a duty-cycled CH may be "
@@ -253,7 +445,8 @@ main(int argc, char* argv[])
         Ptr<WifiPhy> p = g_wifiDev[s.id]->GetPhy();
         if (s.role == Role::PRIMARY)
         {
-            auto app = CreateObject<ClusterHeadApp>(&g_world, s.cluster, p, phase->GetValue(), clockDrift->GetValue());
+            auto app = CreateObject<ClusterHeadApp>(
+                &g_world, s.cluster, s.id, p, phase->GetValue(), clockDrift->GetValue());
             chNodes.Get(i)->AddApplication(app);
             app->SetStartTime(Seconds(0));
             app->SetStopTime(Seconds(cfg.simTime));
@@ -273,14 +466,16 @@ main(int argc, char* argv[])
     Ptr<UniformRandomVariable> uavDelay = CreateObject<UniformRandomVariable>();
     uavDelay->SetStream(STREAM_UAV_DELAY);
 
-    auto uav = CreateObject<UavApp>(&g_world, std::move(policy), speed, uavDelay);
-    uavNode->AddApplication(uav);
-    uav->SetStartTime(Seconds(0));
-    uav->SetStopTime(Seconds(cfg.simTime));
+    g_uavApp = CreateObject<UavApp>(&g_world, std::move(policy), speed, uavDelay);
+    uavNode->AddApplication(g_uavApp);
+    g_uavApp->SetStartTime(Seconds(0));
+    g_uavApp->SetStopTime(Seconds(cfg.simTime));
 
     // ---- Traffic and energy check
     g_loss154 = CreateObject<UniformRandomVariable>();
     g_loss154->SetStream(STREAM_LOSS154);
+    g_chFailureRv = CreateObject<UniformRandomVariable>();
+    g_chFailureRv->SetStream(STREAM_CH_FAILURE);
     for (uint32_t id = 0; id < N; ++id)
     {
         auto rv = CreateObject<ExponentialRandomVariable>();
@@ -290,6 +485,8 @@ main(int argc, char* argv[])
         Simulator::Schedule(Seconds(rv->GetValue()), &GenerateReading, id);
     }
     Simulator::Schedule(Seconds(cfg.energyCheckInterval), &CheckEnergy);
+    Simulator::Schedule(Seconds(cfg.replicationInterval), &ReplicateBuffers);
+    Simulator::Schedule(Seconds(cfg.heartbeatInterval), &CheckPrimaryHeartbeats);
 
     std::cout << "wsn-uav: N=" << N << " K=" << K << " wakeMode=" << cfg.wakeMode
               << " routing=" << cfg.routing << " seed=" << cfg.seed << " simTime=" << cfg.simTime << "s"

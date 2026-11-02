@@ -27,6 +27,8 @@ class UavApp : public ns3::Application
        ns3::Ptr<ns3::NormalRandomVariable> speed,
        ns3::Ptr<ns3::UniformRandomVariable> delay);
 
+    void SetActivePrimary(uint32_t clusterId, uint32_t sensorId);
+
   private:
     void StartApplication() override;
     void StopApplication() override;
@@ -57,6 +59,7 @@ class UavApp : public ns3::Application
     bool m_planSent = false;
     VisitRecord m_visit{};
     std::vector<double> m_promise; // per cluster, promised next arrival (-1 none)
+    std::vector<uint32_t> m_activePrimary; // active CH sensor ID per cluster
     std::vector<double> m_lap0, m_offset; // per tour position [s]
     double m_lap1Start = 0, m_period = 0;  // [s]
     double m_lastWaypoint = 0.0;   // time of the last waypoint added [s]

@@ -6,6 +6,8 @@
 #include <fstream>
 #include <iomanip>
 #include <sstream>
+#include <regex>
+#include <limits>
 
 namespace wsnuav
 {
@@ -40,6 +42,20 @@ ReadCsv(const std::string& path)
         rows.push_back(cols);
     }
     return rows;
+}
+
+double
+ReadJsonNumber(const std::string& path, const std::string& key)
+{
+    std::ifstream in(path);
+    NS_ABORT_MSG_IF(!in, "Cannot open topology metadata " << path);
+    std::stringstream content;
+    content << in.rdbuf();
+    std::regex pattern("\\\"" + key + "\\\"\\s*:\\s*(-?[0-9]+(\\.[0-9]+)?)");
+    std::smatch match;
+    std::string text = content.str();
+    NS_ABORT_MSG_IF(!std::regex_search(text, match, pattern), "Missing numeric topology parameter " << key);
+    return std::stod(match[1].str());
 }
 
 Role
@@ -106,12 +122,180 @@ World::LoadTopology(const std::string& dir)
     {
         tourOrder.at(c.tourIndex) = c.id;
     }
+
+    // Reconstruct Eq. (2) feasible CH candidates from topology geometry and meta.json.
+    // This retains candidates beyond the initially elected primary/backup.
+    const double sensorRange = ReadJsonNumber(dir + "/meta.json", "sensor_range_m");
+    const double uavRange = ReadJsonNumber(dir + "/meta.json", "uav_range_m");
+    uavRangeM = uavRange;
+    electionAlpha = ReadJsonNumber(dir + "/meta.json", "alpha");
+    for (auto& c : clusters)
+    {
+        std::vector<uint32_t> members;
+        for (const auto& sensor : sensors)
+            if (sensor.cluster == c.id) members.push_back(sensor.id);
+        for (uint32_t candidate : members)
+        {
+            const Sensor& cand = sensors.at(candidate);
+            const double dMeet = std::hypot(cand.x - c.meetX, cand.y - c.meetY);
+            if (dMeet > uavRange) continue;
+            double maxMemberDistance = 0.0;
+            for (uint32_t member : members)
+            {
+                const Sensor& m = sensors.at(member);
+                maxMemberDistance = std::max(maxMemberDistance, std::hypot(cand.x - m.x, cand.y - m.y));
+            }
+            if (maxMemberDistance <= sensorRange) c.feasibleCandidates.push_back(candidate);
+        }
+        NS_ABORT_MSG_IF(c.feasibleCandidates.empty(), "Cluster " << c.id << " has no feasible CH candidates");
+        // Provision Wi-Fi-capable standby radios for every feasible candidate so that
+        // a later re-election can promote one without rebuilding the ns-3 network.
+        for (uint32_t id : c.feasibleCandidates)
+            if (id != c.primary) sensors.at(id).role = Role::BACKUP;
+    }
 }
 
 double
 World::Airtime154() const
 {
     return 8.0 * (cfg.readingBytes + cfg.overhead154) / cfg.rate154;
+}
+
+void
+World::ReplicateBuffers()
+{
+    for (auto& c : clusters)
+    {
+        if (c.backup < 0)
+        {
+            continue;
+        }
+
+        const Sensor& primary = sensors.at(c.primary);
+        const Sensor& backup = sensors.at(static_cast<uint32_t>(c.backup));
+
+        if (!primary.alive || !backup.alive)
+        {
+            continue;
+        }
+
+        c.backupBuffer = c.buffer;
+    }
+}
+
+bool
+World::PromoteBackup(uint32_t clusterId, double now)
+{
+    Cluster& c = clusters.at(clusterId);
+
+    // A cluster without a backup cannot fail over.
+    if (c.backup < 0)
+    {
+        return false;
+    }
+
+    Sensor& oldPrimary = sensors.at(c.primary);
+    Sensor& backup = sensors.at(static_cast<uint32_t>(c.backup));
+
+    // Promotion is possible only if the backup is still alive.
+    if (!backup.alive)
+    {
+        return false;
+    }
+
+    // Recover as much of the primary's failure-time buffer as the
+    // backup's replicated copy contains.
+    uint64_t recovered =
+        std::min(c.backupBuffer, c.bufferLostAtFailure);
+
+    c.lostChDead -= recovered;
+    c.lostDuringFailover = c.bufferLostAtFailure - recovered;
+
+    // Change cluster and sensor roles.
+    oldPrimary.role = Role::MEMBER;
+    backup.role = Role::PRIMARY;
+    c.primary = backup.id;
+
+    // Restore the backup's replicated data.
+    c.buffer = std::min<uint64_t>(c.backupBuffer, cfg.bufferCapacity);
+
+    // Record failover statistics.
+    c.backupPromotions++;
+    c.lastFailoverTime = now;
+
+    // This cluster has consumed its backup.
+    c.backup = -1;
+    c.backupBuffer = 0;
+    c.bufferLostAtFailure = 0;
+
+    return true;
+}
+
+int32_t
+World::ElectBackup(uint32_t clusterId, double now)
+{
+    Cluster& c = clusters.at(clusterId);
+    c.backup = -1;
+    c.backupBuffer = 0;
+    double bestScore = -std::numeric_limits<double>::infinity();
+        uint32_t skippedPrimary = 0;
+    uint32_t skippedDead = 0;
+    uint32_t skippedNoWifi = 0;
+    uint32_t eligible = 0;
+
+    for (uint32_t id : c.feasibleCandidates)
+    {
+        const Sensor& candidate = sensors.at(id);
+
+        if (id == c.primary)
+        {
+            skippedPrimary++;
+            continue;
+        }
+
+        if (!candidate.alive)
+        {
+            skippedDead++;
+            continue;
+        }
+
+        if (!candidate.wifiEnergy)
+        {
+            skippedNoWifi++;
+            continue;
+        }
+
+        eligible++;
+
+        const double distance =
+            std::hypot(candidate.x - c.meetX, candidate.y - c.meetY);
+
+        const double energyScore =
+            std::clamp(Residual(candidate, now) / cfg.initialEnergy, 0.0, 1.0);
+
+        const double score =
+            electionAlpha * energyScore +
+            (1.0 - electionAlpha) * (1.0 - distance / uavRangeM);
+
+        if (score > bestScore)
+        {
+            bestScore = score;
+            c.backup = static_cast<int32_t>(id);
+        }
+    }
+
+    NS_LOG_UNCOND(
+        "BACKUP_DIAG t=" << now
+        << " cluster=" << clusterId
+        << " primary=" << c.primary
+        << " pool=" << c.feasibleCandidates.size()
+        << " skippedPrimary=" << skippedPrimary
+        << " skippedDead=" << skippedDead
+        << " skippedNoWifi=" << skippedNoWifi
+        << " eligible=" << eligible
+        << " selected=" << c.backup);
+    if (c.backup >= 0) sensors.at(static_cast<uint32_t>(c.backup)).role = Role::BACKUP;
+    return c.backup;
 }
 
 double
@@ -284,6 +468,19 @@ World::WriteOutputs(double wallSeconds) const
             nEta++;
         }
     }
+    
+    uint64_t totalPrimaryFailures = 0;
+uint64_t totalBackupPromotions = 0;
+uint64_t totalFailuresNoBackup = 0;
+uint64_t totalFailuresBackupDead = 0;
+
+for (const auto& c : clusters)
+{
+    totalPrimaryFailures += c.primaryFailures;
+    totalBackupPromotions += c.backupPromotions;
+    totalFailuresNoBackup += c.failuresNoBackup;
+    totalFailuresBackupDead += c.failuresBackupDead;
+}
 
     std::ofstream j(cfg.outDir + "/metrics.json");
     j << std::setprecision(10);
@@ -311,7 +508,11 @@ World::WriteOutputs(double wallSeconds) const
       << ", \"overflow_ratio\": " << nan(gen > 0, double(ovf) / gen) << ", \"lost_154\": " << l154
       << ", \"lost_wifi\": " << lostWifi << ", \"lost_ch_dead\": " << lchd
       << ", \"in_buffer_at_end\": " << buf << "},\n"
-      << "  \"energy\": {\"sensor_total_J\": " << eTotal << ", \"sensor_mean_J\": " << eTotal / N
+      << "  \"reliability\": {\"primary_failures\": " << totalPrimaryFailures
+      << ", \"backup_promotions\": " << totalBackupPromotions
+     << ", \"failures_no_backup\": " << totalFailuresNoBackup
+      << ", \"failures_backup_dead\": " << totalFailuresBackupDead << "},\n" 
+     << "  \"energy\": {\"sensor_total_J\": " << eTotal << ", \"sensor_mean_J\": " << eTotal / N
       << ", \"primary_ch_mean_J\": " << nan(nCh > 0, eCh / nCh)
       << ", \"non_primary_mean_J\": " << nan(nMem > 0, eMem / nMem) << ", \"wifi_total_J\": " << eWifi
       << ", \"ieee802154_total_J\": " << e154 << ", \"baseline_total_J\": " << eBase
@@ -350,6 +551,7 @@ World::WriteOutputs(double wallSeconds) const
 
     std::ofstream pc(cfg.outDir + "/per_cluster.csv");
     pc << "cluster_id,size,generated,delivered,overflow,lost_154,lost_wifi,lost_ch_dead,in_buffer,"
+      "primary_failures,backup_promotions,failures_no_backup,failures_backup_dead,"
       "visits,contacts,failed_contacts,discovery_contacts,"
       "windows_scheduled,windows_opened,windows_met,windows_missed,"
       "wifi_awake_s,residual_fraction\n";
@@ -358,7 +560,9 @@ World::WriteOutputs(double wallSeconds) const
         const auto& c = clusters[k];
         pc << c.id << "," << c.size << "," << c.generated << "," << c.delivered << "," << c.overflow
            << "," << c.lost154 << "," << c.sentWifi - c.delivered << "," << c.lostChDead << ","
-           << c.buffer << "," << c.visits << "," << c.contacts << "," << c.failedContacts << ","
+           << c.buffer << "," << c.primaryFailures << "," << c.backupPromotions << ","
+           << c.failuresNoBackup << "," << c.failuresBackupDead << ","
+           << c.visits << "," << c.contacts << "," << c.failedContacts << ","
            << c.discoveryContacts << ","
            << c.windowsScheduled << "," << c.windowsOpened << ","
            << c.windowsMet << "," << c.windowsMissed << ","

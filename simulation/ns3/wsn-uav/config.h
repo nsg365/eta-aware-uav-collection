@@ -80,6 +80,14 @@ struct SimConfig
     double wDrift = 0.0;
     double planTimeout = 0.5;   // CH waits this long after DONE for a PLAN [s]
 
+    // CH reliability and failover (paper Sec. III-F/G)
+    double chFailureRate = 0.0;       // random primary failure hazard [1/s]
+    double heartbeatInterval = 1.0;   // primary -> backup heartbeat interval [s]
+    uint32_t missedHeartbeats = 3;    // m_h: consecutive misses before takeover
+    double replicationInterval = 1.0;  // T_rep: backup buffer replication interval [s]
+    double retryInterval = 10.0;      // Delta_r: retry spacing [s]
+    uint32_t maxMissedRetries = 3;    // M_max: misses before DISCOVERY
+
     void Register(ns3::CommandLine& cmd)
     {
         cmd.AddValue("topologyDir", "Directory with nodes.csv and clusters.csv (required)", topologyDir);
@@ -131,6 +139,12 @@ struct SimConfig
         cmd.AddValue("wakeHalfWidth", "Fixed scheduled wake-window half-width w [s]", wakeHalfWidth);
         cmd.AddValue("wDrift", "Maximum absolute per-CH clock offset [s]", wDrift);
         cmd.AddValue("planTimeout", "CH wait for PLAN after upload [s]", planTimeout);
+        cmd.AddValue("chFailureRate", "Primary CH random failure hazard [1/s]", chFailureRate);
+        cmd.AddValue("heartbeatInterval", "Primary-to-backup heartbeat interval [s]", heartbeatInterval);
+        cmd.AddValue("missedHeartbeats", "Consecutive missed heartbeats before backup takeover m_h", missedHeartbeats);
+        cmd.AddValue("replicationInterval", "Backup buffer replication interval T_rep [s]", replicationInterval);
+        cmd.AddValue("retryInterval", "Retry spacing Delta_r [s]", retryInterval);
+        cmd.AddValue("maxMissedRetries", "Maximum missed retries before DISCOVERY M_max", maxMissedRetries);
     }
 };
 
