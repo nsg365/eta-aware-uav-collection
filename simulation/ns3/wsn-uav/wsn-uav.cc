@@ -213,8 +213,9 @@ CheckPrimaryHeartbeats()
                         backupDevice->GetNode()->AddApplication(promotedApp);
 
                         // Start the application immediately at failover time.
-                        promotedApp->SetStartTime(Seconds(now));
-                        promotedApp->SetStopTime(Seconds(g_world.cfg.simTime));
+                        // Start/stop times are delays from when the app is added, not absolute times.
+                        promotedApp->SetStartTime(Seconds(0));
+                        promotedApp->SetStopTime(Seconds(g_world.cfg.simTime - now));
 
                         // Register the promoted backup as the active CH.
                         g_chApp[backupId] = promotedApp;

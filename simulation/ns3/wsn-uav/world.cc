@@ -238,10 +238,6 @@ World::ElectBackup(uint32_t clusterId, double now)
     c.backup = -1;
     c.backupBuffer = 0;
     double bestScore = -std::numeric_limits<double>::infinity();
-        uint32_t skippedPrimary = 0;
-    uint32_t skippedDead = 0;
-    uint32_t skippedNoWifi = 0;
-    uint32_t eligible = 0;
 
     for (uint32_t id : c.feasibleCandidates)
     {
@@ -249,23 +245,18 @@ World::ElectBackup(uint32_t clusterId, double now)
 
         if (id == c.primary)
         {
-            skippedPrimary++;
             continue;
         }
 
         if (!candidate.alive)
         {
-            skippedDead++;
             continue;
         }
 
         if (!candidate.wifiEnergy)
         {
-            skippedNoWifi++;
             continue;
         }
-
-        eligible++;
 
         const double distance =
             std::hypot(candidate.x - c.meetX, candidate.y - c.meetY);
@@ -284,16 +275,6 @@ World::ElectBackup(uint32_t clusterId, double now)
         }
     }
 
-    NS_LOG_UNCOND(
-        "BACKUP_DIAG t=" << now
-        << " cluster=" << clusterId
-        << " primary=" << c.primary
-        << " pool=" << c.feasibleCandidates.size()
-        << " skippedPrimary=" << skippedPrimary
-        << " skippedDead=" << skippedDead
-        << " skippedNoWifi=" << skippedNoWifi
-        << " eligible=" << eligible
-        << " selected=" << c.backup);
     if (c.backup >= 0) sensors.at(static_cast<uint32_t>(c.backup)).role = Role::BACKUP;
     return c.backup;
 }
