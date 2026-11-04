@@ -77,6 +77,12 @@ struct Cluster
     uint32_t windowsMet = 0, windowsMissed = 0;
     double windowListenTime = 0;
     double wifiAwakeTime = 0;
+
+    // Scheduled-contact retry reliability accounting
+    uint32_t retryAttempts = 0;
+    uint32_t promiseViolations = 0;
+    uint32_t retryExhaustions = 0;
+    uint32_t rebootstrapCount = 0;
 };
 
 struct VisitRecord

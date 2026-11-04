@@ -451,9 +451,17 @@ World::WriteOutputs(double wallSeconds) const
     }
     
     uint64_t totalPrimaryFailures = 0;
-uint64_t totalBackupPromotions = 0;
-uint64_t totalFailuresNoBackup = 0;
-uint64_t totalFailuresBackupDead = 0;
+    uint64_t totalBackupPromotions = 0;
+    uint64_t totalFailuresNoBackup = 0;
+    uint64_t totalFailuresBackupDead = 0;
+
+    uint64_t totalRetryAttempts = 0;
+    uint64_t totalPromiseViolations = 0;
+    uint64_t totalRetryExhaustions = 0;
+    uint64_t totalRebootstrapCount = 0;
+
+    uint64_t totalLostDuringFailover = 0;
+    double latestFailoverTime = -1.0;
 
 for (const auto& c : clusters)
 {
@@ -461,6 +469,18 @@ for (const auto& c : clusters)
     totalBackupPromotions += c.backupPromotions;
     totalFailuresNoBackup += c.failuresNoBackup;
     totalFailuresBackupDead += c.failuresBackupDead;
+
+    totalRetryAttempts += c.retryAttempts;
+    totalPromiseViolations += c.promiseViolations;
+    totalRetryExhaustions += c.retryExhaustions;
+    totalRebootstrapCount += c.rebootstrapCount;
+
+    totalLostDuringFailover += c.lostDuringFailover;
+
+    if (c.lastFailoverTime >= 0.0)
+    {
+        latestFailoverTime = std::max(latestFailoverTime, c.lastFailoverTime);
+    }
 }
 
     std::ofstream j(cfg.outDir + "/metrics.json");
@@ -491,9 +511,16 @@ for (const auto& c : clusters)
       << ", \"in_buffer_at_end\": " << buf << "},\n"
       << "  \"reliability\": {\"primary_failures\": " << totalPrimaryFailures
       << ", \"backup_promotions\": " << totalBackupPromotions
-     << ", \"failures_no_backup\": " << totalFailuresNoBackup
-      << ", \"failures_backup_dead\": " << totalFailuresBackupDead << "},\n" 
-     << "  \"energy\": {\"sensor_total_J\": " << eTotal << ", \"sensor_mean_J\": " << eTotal / N
+      << ", \"failures_no_backup\": " << totalFailuresNoBackup
+      << ", \"failures_backup_dead\": " << totalFailuresBackupDead
+      << ", \"lost_during_failover\": " << totalLostDuringFailover
+      << ", \"latest_failover_time_s\": "
+      << nan(latestFailoverTime >= 0.0, latestFailoverTime)
+      << ", \"retry_attempts\": " << totalRetryAttempts
+      << ", \"promise_violations\": " << totalPromiseViolations
+      << ", \"retry_exhaustions\": " << totalRetryExhaustions
+      << ", \"rebootstrap_count\": " << totalRebootstrapCount << "},\n"
+      << "  \"energy\": {\"sensor_total_J\": " << eTotal << ", \"sensor_mean_J\": " << eTotal / N
       << ", \"primary_ch_mean_J\": " << nan(nCh > 0, eCh / nCh)
       << ", \"non_primary_mean_J\": " << nan(nMem > 0, eMem / nMem) << ", \"wifi_total_J\": " << eWifi
       << ", \"ieee802154_total_J\": " << e154 << ", \"baseline_total_J\": " << eBase
@@ -510,20 +537,20 @@ for (const auto& c : clusters)
       << ", \"bytes_per_uav_joule\": "
       << nan(eFlight + eHover > 0, del * double(cfg.readingBytes) / (eFlight + eHover)) << "},\n"
       << "  \"wake\": {\"windows_scheduled\": " << wSched
-<< ", \"windows_opened\": " << wOpened
-<< ", \"windows_met\": " << wMet
-<< ", \"windows_missed\": " << wMissed
-<< ", \"discovery_contacts\": " << discoveryContacts
-<< ", \"meeting_success_rate\": "
-<< nan(wClosed > 0, double(wMet) / wClosed)
-<< ", \"missed_window_fraction\": "
-<< nan(wClosed > 0, double(wMissed) / wClosed)
-<< ", \"planned_window_width_s\": "
-<< nan(cfg.wakeMode == "scheduled", 2 * cfg.wakeHalfWidth)
-<< ", \"mean_window_listen_s\": "
-<< nan(wClosed > 0, wListen / wClosed)
-<< ", \"ch_wifi_awake_fraction\": "
-<< awake / (K * T) << "},\n"
+      << ", \"windows_opened\": " << wOpened
+      << ", \"windows_met\": " << wMet
+      << ", \"windows_missed\": " << wMissed
+      << ", \"discovery_contacts\": " << discoveryContacts
+      << ", \"meeting_success_rate\": "
+      << nan(wClosed > 0, double(wMet) / wClosed)
+      << ", \"missed_window_fraction\": "
+      << nan(wClosed > 0, double(wMissed) / wClosed)
+      << ", \"planned_window_width_s\": "
+      << nan(cfg.wakeMode == "scheduled", 2 * cfg.wakeHalfWidth)
+      << ", \"mean_window_listen_s\": "
+      << nan(wClosed > 0, wListen / wClosed)
+      << ", \"ch_wifi_awake_fraction\": "
+      << awake / (K * T) << "},\n"
       << "  \"eta\": {\"n\": " << nEta << ", \"mean_signed_error_s\": " << nan(nEta > 0, sumSigned / nEta)
       << ", \"mae_s\": " << nan(nEta > 0, sumAbs / nEta)
       << ", \"rmse_s\": " << nan(nEta > 0, std::sqrt(sumSq / std::max(nEta, 1U)))
@@ -533,8 +560,10 @@ for (const auto& c : clusters)
     std::ofstream pc(cfg.outDir + "/per_cluster.csv");
     pc << "cluster_id,size,generated,delivered,overflow,lost_154,lost_wifi,lost_ch_dead,in_buffer,"
       "primary_failures,backup_promotions,failures_no_backup,failures_backup_dead,"
+      "lost_during_failover,last_failover_time_s,"
       "visits,contacts,failed_contacts,discovery_contacts,"
       "windows_scheduled,windows_opened,windows_met,windows_missed,"
+      "retry_attempts,promise_violations,retry_exhaustions,rebootstrap_count,"
       "wifi_awake_s,residual_fraction\n";
     for (size_t k = 0; k < K; ++k)
     {
@@ -543,10 +572,13 @@ for (const auto& c : clusters)
            << "," << c.lost154 << "," << c.sentWifi - c.delivered << "," << c.lostChDead << ","
            << c.buffer << "," << c.primaryFailures << "," << c.backupPromotions << ","
            << c.failuresNoBackup << "," << c.failuresBackupDead << ","
+           << c.lostDuringFailover << "," << c.lastFailoverTime << ","
            << c.visits << "," << c.contacts << "," << c.failedContacts << ","
            << c.discoveryContacts << ","
            << c.windowsScheduled << "," << c.windowsOpened << ","
            << c.windowsMet << "," << c.windowsMissed << ","
+           << c.retryAttempts << "," << c.promiseViolations << ","
+           << c.retryExhaustions << "," << c.rebootstrapCount << ","
            << c.wifiAwakeTime << "," << clusterResidual[k] / (cfg.initialEnergy * c.size) << "\n";
     }
 

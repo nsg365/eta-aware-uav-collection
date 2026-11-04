@@ -5,8 +5,9 @@
 //   duty_cycle - listen dutyListen every dutyPeriod, independent of the UAV (ablation A6).
 //   scheduled  - start in DISCOVERY (= duty cycle); after each contact the UAV sends a PLAN
 //                with a promised arrival time t*, and the CH sleeps until t* - w and listens
-//                until t* + w. A window that closes without contact is a missed meeting; the
-//                CH then falls back to DISCOVERY. (Retry windows are Phase 1.)
+//                until t* + w. A window that closes without contact is a missed meeting;
+//                the CH enters RETRY and schedules another contact attempt.
+//                Retry exhaustion returns the CH to DISCOVERY.
 #ifndef WSN_UAV_CH_APP_H
 #define WSN_UAV_CH_APP_H
 
@@ -48,6 +49,11 @@ class ClusterHeadApp : public ns3::Application
     void OpenWindow(double closeAt);
     void CloseWindow();
 
+    // Scheduled-contact retry mechanism
+    void ScheduleRetry();
+    void RetryWindow();
+    void RetryExhausted();
+
     void Receive(ns3::Ptr<ns3::Socket> socket);
     void SendNextFrame();
     void PlanTimeout();
@@ -70,10 +76,16 @@ class ClusterHeadApp : public ns3::Application
     double m_windowOpen = 0;
     uint64_t m_contactSent = 0;
 
+    // Scheduled-contact retry state
+    uint32_t m_missedRetries = 0;
+    bool m_retryPending = false;
+    double m_retryTime = 0.0;
+
     ns3::EventId m_cycleEvent;  // discovery / window open
     ns3::EventId m_windowClose;
     ns3::EventId m_sendEvent;
     ns3::EventId m_planTimeout;
+    ns3::EventId m_retryEvent;
 };
 
 } // namespace wsnuav

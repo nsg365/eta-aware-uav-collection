@@ -150,8 +150,96 @@ ClusterHeadApp::CloseWindow()
 {
     m_inWindow = false;
     m_c.windowsMissed++;
+    m_c.promiseViolations++;
     m_c.windowListenTime += Simulator::Now().GetSeconds() - m_windowOpen;
-    NS_LOG_INFO(Simulator::Now().As(Time::S) << " cluster " << m_c.id << " missed meeting");
+
+    NS_LOG_INFO(Simulator::Now().As(Time::S)
+               << " cluster " << m_c.id << " missed meeting");
+
+    if (m_w->cfg.wakeMode == "scheduled")
+    {
+        ScheduleRetry();
+    }
+    else
+    {
+        EnterDiscovery(false);
+    }
+}
+
+void
+ClusterHeadApp::ScheduleRetry()
+{
+    if (m_dead)
+    {
+        return;
+    }
+
+    if (!m_retryPending)
+    {
+        m_retryTime = Simulator::Now().GetSeconds()
+                    + m_w->cfg.retryInterval;
+    }
+    else
+    {
+        m_retryTime += m_w->cfg.retryInterval;
+    }
+
+    m_missedRetries++;
+
+    if (m_missedRetries > m_w->cfg.maxMissedRetries)
+    {
+        RetryExhausted();
+        return;
+    }
+
+    m_retryPending = true;
+    m_c.retryAttempts++;
+
+    double retryListenStart =
+        std::max(Simulator::Now().GetSeconds(),
+                 m_retryTime - m_w->cfg.wakeHalfWidth);
+
+    m_cycleEvent.Cancel();
+
+    Sleep();
+
+    m_retryEvent = Simulator::Schedule(
+        Seconds(retryListenStart - Simulator::Now().GetSeconds()),
+        &ClusterHeadApp::RetryWindow,
+        this);
+
+    NS_LOG_INFO(Simulator::Now().As(Time::S)
+               << " cluster " << m_c.id
+               << " scheduled retry " << m_missedRetries
+               << " at " << m_retryTime);
+}
+
+
+void
+ClusterHeadApp::RetryWindow()
+{
+    if (m_dead || !m_retryPending)
+    {
+        return;
+    }
+
+    OpenWindow(m_retryTime + m_w->cfg.wakeHalfWidth);
+}
+
+
+void
+ClusterHeadApp::RetryExhausted()
+{
+    m_retryPending = false;
+    m_missedRetries = 0;
+
+    m_c.retryExhaustions++;
+    m_c.rebootstrapCount++;
+
+    NS_LOG_INFO(Simulator::Now().As(Time::S)
+               << " cluster " << m_c.id
+               << " exhausted retries; returning to DISCOVERY");
+
     EnterDiscovery(false);
 }
 
@@ -176,6 +264,11 @@ ClusterHeadApp::Receive(Ptr<Socket> socket)
             m_cycleEvent.Cancel();
             if (m_inWindow)
             {
+                // A successful UAV contact ends the current retry sequence.
+                m_retryEvent.Cancel();
+                m_retryPending = false;
+                m_missedRetries = 0;
+
                 m_windowClose.Cancel();
                 m_inWindow = false;
                 m_c.windowsMet++;
@@ -282,6 +375,7 @@ ClusterHeadApp::OnDeath()
     m_windowClose.Cancel();
     m_sendEvent.Cancel();
     m_planTimeout.Cancel();
+    m_retryEvent.Cancel();
     m_c.bufferLostAtFailure = m_c.buffer;
     m_c.lostChDead += m_c.buffer;
     m_c.buffer = 0;

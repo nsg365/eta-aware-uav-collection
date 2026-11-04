@@ -1,0 +1,33 @@
+[experiment]
+name = "reliability_lowrate_long"
+num_sensors = [60]
+seeds = [1,2,3,4,5,6,7,8,9,10]
+
+[topology]
+area_m = 500.0
+sensor_range_m = 80.0
+dbscan_kappa = 0.8
+dbscan_min_samples = 3
+uav_range_m = 30.0
+alpha = 0.5
+min_candidates = 2
+depot_x = 0.0
+depot_y = 0.0
+
+[simulation]
+simTime = 900.0
+routing = "tour"
+initialEnergy = 500.0
+readingRate = 0.1
+uavSpeed = 10.0
+uavSpeedStd = 1.0
+dutyPeriod = 10.0
+dutyListen = 1.0
+wakeHalfWidth = 20.0
+chFailureRate = 0.05
+heartbeatInterval = 1.0
+missedHeartbeats = 3
+
+[[variant]]
+name = "reliability_lowrate_long"
+wakeMode = "scheduled"
