@@ -247,4 +247,15 @@ At 30 m, 4,998 of 5,000 packets were delivered. Delivery degraded and became mor
 
 **Rationale:** The 30 m radius is a conservative initial choice based on the tested simulation configuration and a target of at least 99% delivery in each of the five tested seeds. The parameter represents horizontal CH-to-meeting-point distance, consistent with the topology feasibility check.
 
-**Limitations:** This experiment is a simulation calibration, not a measurement of real-world Wi-Fi range. Results depend on the propagation model, fading, PHY/MAC settings, altitude, traffic pattern, and random seed. Five seeds are limited evidence; the selected radius should be revisited if the simulation configuration changes. The topology radius is a feasibility constraint, not a hard cutoff in the ns-3 radio model.
+**Limitations:** This experiment is a simulation calibration, not a measurement of real-world Wi-Fi range. Results depend on the propagation model, fading, PHY/MAC settings, altitude, traffic pattern, and random seed.
+
+**Reproduction (4 Nov).** The original sweep program was not committed and its fading parameter was not recorded, so the table above could not be reproduced exactly. `simulation/ns3/wsn-uav-range` (same link settings as the simulation, 1,000 frames per distance, 5 seeds, `--nakagamiM` for fading) gives, mean delivery (minimum over seeds):
+
+| Fading | 25 m | 30 m | 35 m | 40 m | 41 m | 42 m |
+|---|---:|---:|---:|---:|---:|---:|
+| none (as in the main simulation) | 100 % | 100 % | 100 % | 100 % | 100 % | 0 % |
+| Nakagami m = 1 (Rayleigh) | 95.9 % (93.1) | 74.6 % (72.2) | 56.0 % | 43.3 % | 40.9 % | 37.4 % |
+| Nakagami m = 2 | 100 % | 100 % (99.9) | 77.6 % | 53.4 % | 47.7 % | 42.1 % |
+| Nakagami m = 3 | 100 % | 100 % | 92.8 % (89.8) | 55.9 % | 50.5 % | 46.6 % |
+
+The simulated link has no fading, so it is a hard cutoff at 41 m (ns-3's −82 dBm preamble-detection threshold at 30 m altitude). 30 m is kept as a conservative radius: it is the largest that keeps ≥ 99 % delivery in every seed under moderate fading (m ≥ 2). Data: `results/sample/range_calibration.csv`. Reproduce: `./ns3 build wsn-uav-range`, then `build/scratch/wsn-uav-range/ns3.47-wsn-uav-range-default --out=range.csv --maxRho=50 --step=1 --packets=1000 --nakagamiM=2 --seed=1`.

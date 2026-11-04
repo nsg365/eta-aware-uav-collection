@@ -65,10 +65,12 @@ Tasks:
    retries, re-bootstraps, promise violations.
 
 Done when:
-- [ ] Tests cover failure → promotion, missed meeting → retry (no failover), and data
+- [x] Tests cover failure → promotion, missed meeting → retry (no failover), and data
       conservation with failures on.
-- [ ] Wake-mode example experiment re-run with stressors on; results in `docs/handoff/phase1.md`.
-- [ ] Energy table with citations committed.
+- [x] Wake-mode example experiment re-run with stressors on; results in `docs/handoff/phase1.md`.
+- [x] Energy table with citations committed.
+
+Status (4 Nov): done. Energy-triggered re-election (stretch) was not implemented.
 
 ## Phase 2 — UAV belief, baselines, ETA lateness and adaptive windows (Person 2 - pakku)
 
