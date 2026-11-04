@@ -80,6 +80,7 @@ struct Cluster
 
     // Scheduled-contact retry reliability accounting
     uint32_t retryAttempts = 0;
+    uint32_t retrySuccesses = 0;  // missed promises recovered in a retry window
     uint32_t promiseViolations = 0;
     uint32_t retryExhaustions = 0;
     uint32_t rebootstrapCount = 0;

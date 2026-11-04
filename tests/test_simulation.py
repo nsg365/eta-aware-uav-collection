@@ -60,3 +60,16 @@ def test_same_seed_is_deterministic(topology, tmp_path):
         m["run"].pop("wall_time_s")
         m["run"].pop("topology_dir")
     assert a == b
+
+
+def test_missed_promises_are_retried_and_counted_once(topology, tmp_path):
+    # UAV delays make it miss some promised windows. Each miss is counted once; most are
+    # recovered in a retry window (eq. 20), and no CH fails because of a missed meeting.
+    m = run(topology, tmp_path, wakeMode="scheduled", simTime=3600,
+            uavDelayProb=0.2, uavDelayMin=25, uavDelayMax=40)
+    w, r = m["wake"], m["reliability"]
+    assert w["windows_missed"] > 0
+    assert r["promise_violations"] == w["windows_missed"]
+    assert r["retry_attempts"] >= w["windows_missed"]
+    assert 0 < r["retry_successes"] <= w["windows_missed"]
+    assert r["primary_failures"] == 0

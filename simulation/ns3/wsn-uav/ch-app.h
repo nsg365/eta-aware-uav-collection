@@ -79,7 +79,7 @@ class ClusterHeadApp : public ns3::Application
     // Scheduled-contact retry state
     uint32_t m_missedRetries = 0;
     bool m_retryPending = false;
-    double m_retryTime = 0.0;
+    double m_promiseEnd = 0.0; // tau+: end of the promised window, retries are anchored here
 
     ns3::EventId m_cycleEvent;  // discovery / window open
     ns3::EventId m_windowClose;

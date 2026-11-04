@@ -456,6 +456,7 @@ World::WriteOutputs(double wallSeconds) const
     uint64_t totalFailuresBackupDead = 0;
 
     uint64_t totalRetryAttempts = 0;
+    uint64_t totalRetrySuccesses = 0;
     uint64_t totalPromiseViolations = 0;
     uint64_t totalRetryExhaustions = 0;
     uint64_t totalRebootstrapCount = 0;
@@ -471,6 +472,7 @@ for (const auto& c : clusters)
     totalFailuresBackupDead += c.failuresBackupDead;
 
     totalRetryAttempts += c.retryAttempts;
+    totalRetrySuccesses += c.retrySuccesses;
     totalPromiseViolations += c.promiseViolations;
     totalRetryExhaustions += c.retryExhaustions;
     totalRebootstrapCount += c.rebootstrapCount;
@@ -517,6 +519,7 @@ for (const auto& c : clusters)
       << ", \"latest_failover_time_s\": "
       << nan(latestFailoverTime >= 0.0, latestFailoverTime)
       << ", \"retry_attempts\": " << totalRetryAttempts
+      << ", \"retry_successes\": " << totalRetrySuccesses
       << ", \"promise_violations\": " << totalPromiseViolations
       << ", \"retry_exhaustions\": " << totalRetryExhaustions
       << ", \"rebootstrap_count\": " << totalRebootstrapCount << "},\n"
@@ -563,7 +566,7 @@ for (const auto& c : clusters)
       "lost_during_failover,last_failover_time_s,"
       "visits,contacts,failed_contacts,discovery_contacts,"
       "windows_scheduled,windows_opened,windows_met,windows_missed,"
-      "retry_attempts,promise_violations,retry_exhaustions,rebootstrap_count,"
+      "retry_attempts,retry_successes,promise_violations,retry_exhaustions,rebootstrap_count,"
       "wifi_awake_s,residual_fraction\n";
     for (size_t k = 0; k < K; ++k)
     {
@@ -577,7 +580,7 @@ for (const auto& c : clusters)
            << c.discoveryContacts << ","
            << c.windowsScheduled << "," << c.windowsOpened << ","
            << c.windowsMet << "," << c.windowsMissed << ","
-           << c.retryAttempts << "," << c.promiseViolations << ","
+           << c.retryAttempts << "," << c.retrySuccesses << "," << c.promiseViolations << ","
            << c.retryExhaustions << "," << c.rebootstrapCount << ","
            << c.wifiAwakeTime << "," << clusterResidual[k] / (cfg.initialEnergy * c.size) << "\n";
     }

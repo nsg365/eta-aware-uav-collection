@@ -39,6 +39,7 @@ uavDelayProb = 1.0
 uavDelayMin = 5.0
 uavDelayMax = 8.0
 retryInterval = 5.0
+retryListen = 2.0
 maxMissedRetries = 2
 
 [[variant]]

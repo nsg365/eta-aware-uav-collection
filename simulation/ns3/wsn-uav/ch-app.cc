@@ -139,7 +139,10 @@ ClusterHeadApp::OpenWindow(double closeAt)
 {
     Wake();
     m_inWindow = true;
-    m_c.windowsOpened++;
+    if (!m_retryPending)
+    {
+        m_c.windowsOpened++;
+    }
     m_windowOpen = Simulator::Now().GetSeconds();
     double in = std::max(0.0, closeAt - m_windowOpen);
     m_windowClose = Simulator::Schedule(Seconds(in), &ClusterHeadApp::CloseWindow, this);
@@ -149,23 +152,21 @@ void
 ClusterHeadApp::CloseWindow()
 {
     m_inWindow = false;
-    m_c.windowsMissed++;
-    m_c.promiseViolations++;
     m_c.windowListenTime += Simulator::Now().GetSeconds() - m_windowOpen;
 
-    NS_LOG_INFO(Simulator::Now().As(Time::S)
-               << " cluster " << m_c.id << " missed meeting");
-
-    if (m_w->cfg.wakeMode == "scheduled")
+    // A missed promise is counted once, when its scheduled window closes; retries that
+    // follow it are counted separately (retryAttempts, retrySuccesses, retryExhaustions).
+    if (!m_retryPending)
     {
-        ScheduleRetry();
+        m_c.windowsMissed++;
+        m_c.promiseViolations++;
+        NS_LOG_INFO(Simulator::Now().As(Time::S) << " cluster " << m_c.id << " missed meeting");
     }
-    else
-    {
-        EnterDiscovery(false);
-    }
+    ScheduleRetry();
 }
 
+// Eq. (20): retry m opens at tau+ + m * Delta_r, where tau+ is the end of the promised window,
+// and listens retryListen. Between retries the radio sleeps.
 void
 ClusterHeadApp::ScheduleRetry()
 {
@@ -173,47 +174,30 @@ ClusterHeadApp::ScheduleRetry()
     {
         return;
     }
-
-    if (!m_retryPending)
-    {
-        m_retryTime = Simulator::Now().GetSeconds()
-                    + m_w->cfg.retryInterval;
-    }
-    else
-    {
-        m_retryTime += m_w->cfg.retryInterval;
-    }
-
-    m_missedRetries++;
-
-    if (m_missedRetries > m_w->cfg.maxMissedRetries)
+    if (m_missedRetries >= m_w->cfg.maxMissedRetries)
     {
         RetryExhausted();
         return;
     }
 
+    m_missedRetries++;
     m_retryPending = true;
     m_c.retryAttempts++;
 
-    double retryListenStart =
-        std::max(Simulator::Now().GetSeconds(),
-                 m_retryTime - m_w->cfg.wakeHalfWidth);
+    double now = Simulator::Now().GetSeconds();
+    double opens = m_promiseEnd + m_missedRetries * m_w->cfg.retryInterval;
 
     m_cycleEvent.Cancel();
-
     Sleep();
-
-    m_retryEvent = Simulator::Schedule(
-        Seconds(retryListenStart - Simulator::Now().GetSeconds()),
-        &ClusterHeadApp::RetryWindow,
-        this);
+    m_retryEvent = Simulator::Schedule(Seconds(std::max(0.0, opens - now)),
+                                       &ClusterHeadApp::RetryWindow,
+                                       this);
 
     NS_LOG_INFO(Simulator::Now().As(Time::S)
                << " cluster " << m_c.id
                << " scheduled retry " << m_missedRetries
-               << " at " << m_retryTime);
+               << " at " << opens);
 }
-
 
 void
 ClusterHeadApp::RetryWindow()
@@ -223,7 +207,7 @@ ClusterHeadApp::RetryWindow()
         return;
     }
 
-    OpenWindow(m_retryTime + m_w->cfg.wakeHalfWidth);
+    OpenWindow(Simulator::Now().GetSeconds() + m_w->cfg.retryListen);
 }
 
 
@@ -265,13 +249,20 @@ ClusterHeadApp::Receive(Ptr<Socket> socket)
             if (m_inWindow)
             {
                 // A successful UAV contact ends the current retry sequence.
+                if (m_retryPending)
+                {
+                    m_c.retrySuccesses++;
+                }
+                else
+                {
+                    m_c.windowsMet++;
+                }
                 m_retryEvent.Cancel();
                 m_retryPending = false;
                 m_missedRetries = 0;
 
                 m_windowClose.Cancel();
                 m_inWindow = false;
-                m_c.windowsMet++;
                 m_c.windowListenTime += Simulator::Now().GetSeconds() - m_windowOpen;
             }
             else
@@ -294,6 +285,7 @@ ClusterHeadApp::Receive(Ptr<Socket> socket)
 
             // Apply this CH's fixed clock offset to its interpretation of the ETA.
             double adjustedEta = eta - m_clockOffset;
+            m_promiseEnd = adjustedEta + w;
 
             m_c.windowsScheduled++;
 

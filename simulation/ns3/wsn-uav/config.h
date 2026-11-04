@@ -85,8 +85,9 @@ struct SimConfig
     double heartbeatInterval = 1.0;   // primary -> backup heartbeat interval [s]
     uint32_t missedHeartbeats = 3;    // m_h: consecutive misses before takeover
     double replicationInterval = 1.0;  // T_rep: backup buffer replication interval [s]
-    double retryInterval = 10.0;      // Delta_r: retry spacing [s]
-    uint32_t maxMissedRetries = 3;    // M_max: misses before DISCOVERY
+    double retryInterval = 12.0;      // Delta_r: retry m opens at (promised window end) + m * Delta_r [s]
+    double retryListen = 10.0;        // listen time of each retry window [s]; < retryInterval
+    uint32_t maxMissedRetries = 5;    // M_max: misses before DISCOVERY
 
     void Register(ns3::CommandLine& cmd)
     {
@@ -144,6 +145,7 @@ struct SimConfig
         cmd.AddValue("missedHeartbeats", "Consecutive missed heartbeats before backup takeover m_h", missedHeartbeats);
         cmd.AddValue("replicationInterval", "Backup buffer replication interval T_rep [s]", replicationInterval);
         cmd.AddValue("retryInterval", "Retry spacing Delta_r [s]", retryInterval);
+        cmd.AddValue("retryListen", "Listen time of each retry window [s]", retryListen);
         cmd.AddValue("maxMissedRetries", "Maximum missed retries before DISCOVERY M_max", maxMissedRetries);
     }
 };

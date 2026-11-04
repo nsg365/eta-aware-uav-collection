@@ -28,7 +28,8 @@ UavApp::UavApp(World* world,
       m_policy(std::move(policy)),
       m_speed(speed),
       m_delay(delay),
-      m_promise(world->clusters.size(), -1.0)
+      m_promise(world->clusters.size(), -1.0),
+      m_contacted(world->clusters.size(), false)
 {
     m_activePrimary.reserve(world->clusters.size());
     for (const auto& cluster : world->clusters)
@@ -63,10 +64,8 @@ UavApp::StartApplication()
     m_socket->Bind(InetSocketAddress(Ipv4Address::GetAny(), UAV_PORT));
     m_socket->SetAllowBroadcast(true);
     m_socket->SetRecvCallback(MakeCallback(&UavApp::Receive, this));
-    if (m_policy->CommitsToOrder())
-    {
-        BuildTimetable(m_mob->GetPosition());
-    }
+    m_period = PromisePeriod();
+    m_uncontacted = static_cast<uint32_t>(m_w->clusters.size());
     Depart();
 }
 
@@ -139,15 +138,8 @@ UavApp::Arrive()
     m_contact = false;
     m_planSent = false;
     SendPoll();
-    // Under a committed timetable the UAV is never more than w ahead of its slot: an early UAV
-    // holds (in every lap, so lap 0 cannot leave it a lap ahead), and the contact timeout and
-    // hover cap count from the end of the hold (D8).
-    double hold = 0;
-    if (m_policy->CommitsToOrder())
-    {
-        double opens = Slot(m_visit.cluster, c.visits - 1) - cfg.wakeHalfWidth;
-        hold = std::max(0.0, opens - Simulator::Now().GetSeconds());
-    }
+    // The contact timeout and hover cap count from the end of the hold (D8).
+    double hold = HoldFor(m_visit.promisedEta, Simulator::Now().GetSeconds());
     m_waitEvent = Simulator::Schedule(Seconds(hold + cfg.contactWait), &UavApp::ContactTimeout, this);
     m_capEvent = Simulator::Schedule(Seconds(hold + cfg.maxHover), &UavApp::EndHover, this);
 }
@@ -193,36 +185,57 @@ UavApp::EndHover()
     Depart();
 }
 
-void
-UavApp::BuildTimetable(Vector depot)
+// P: one tour lap with legs at planSpeedFactor * uavSpeed plus hoverBudget per stop (D7).
+double
+UavApp::PromisePeriod() const
 {
     const SimConfig& cfg = m_w->cfg;
     const auto& order = m_w->tourOrder;
-    const size_t K = order.size();
     const double vPlan = cfg.planSpeedFactor * cfg.uavSpeed;
-    const double surveyBudget = cfg.dutyPeriod + cfg.dutyListen; // CHs are in DISCOVERY on lap 0
-    auto meet = [&](size_t i) { return m_w->clusters[order[i]]; };
-    auto leg = [&](size_t i, size_t j) {
-        return std::hypot(meet(j).meetX - meet(i).meetX, meet(j).meetY - meet(i).meetY) / vPlan;
-    };
-
-    m_lap0.assign(K, 0.0);
-    m_offset.assign(K, 0.0);
-    m_lap0[0] = std::hypot(meet(0).meetX - depot.x, meet(0).meetY - depot.y) / vPlan;
-    for (size_t i = 1; i < K; ++i)
+    double period = 0;
+    for (size_t i = 0; i < order.size(); ++i)
     {
-        m_lap0[i] = m_lap0[i - 1] + surveyBudget + leg(i - 1, i);
-        m_offset[i] = m_offset[i - 1] + cfg.hoverBudget + leg(i - 1, i);
+        const Cluster& a = m_w->clusters[order[i]];
+        const Cluster& b = m_w->clusters[order[(i + 1) % order.size()]];
+        period += cfg.hoverBudget + std::hypot(b.meetX - a.meetX, b.meetY - a.meetY) / vPlan;
     }
-    m_lap1Start = m_lap0[K - 1] + surveyBudget + leg(K - 1, 0);
-    m_period = m_offset[K - 1] + cfg.hoverBudget + leg(K - 1, 0);
+    return period;
 }
 
+// How long to hold at the meeting point so the CH is listening (D8). An early UAV waits for the
+// promised window [tau - w, tau + w]; a late one waits for the next retry window, which opens at
+// tau + w + m * retryInterval for m = 1..maxMissedRetries and lasts retryListen. After the last
+// retry the CH is back in DISCOVERY and no hold is needed.
 double
-UavApp::Slot(uint32_t k, uint32_t lap) const
+UavApp::HoldFor(double promised, double now) const
 {
-    size_t i = m_w->clusters[k].tourIndex;
-    return lap == 0 ? m_lap0[i] : m_lap1Start + (lap - 1) * m_period + m_offset[i];
+    const SimConfig& cfg = m_w->cfg;
+    if (promised < 0 || cfg.wakeMode != "scheduled")
+    {
+        return 0;
+    }
+    if (now < promised - cfg.wakeHalfWidth)
+    {
+        return promised - cfg.wakeHalfWidth - now;
+    }
+    double end = promised + cfg.wakeHalfWidth;
+    if (now <= end)
+    {
+        return 0;
+    }
+    for (uint32_t m = 1; m <= cfg.maxMissedRetries; ++m)
+    {
+        double opens = end + m * cfg.retryInterval;
+        if (now < opens)
+        {
+            return opens - now;
+        }
+        if (now <= opens + cfg.retryListen)
+        {
+            return 0;
+        }
+    }
+    return 0;
 }
 
 void
@@ -262,6 +275,11 @@ UavApp::Receive(Ptr<Socket> socket)
             m_visit.contactTime = Simulator::Now().GetSeconds();
             m_waitEvent.Cancel();
             c.contacts++;
+            if (!m_contacted[m.cluster])
+            {
+                m_contacted[m.cluster] = true;
+                m_uncontacted--;
+            }
         }
         if (m.type == MsgType::DATA)
         {
@@ -272,8 +290,15 @@ UavApp::Receive(Ptr<Socket> socket)
             m_planSent = true;
             if (m_w->cfg.wakeMode == "scheduled")
             {
-                // Promise the cluster's slot in the next lap of the committed timetable (D7).
-                double eta = Slot(m.cluster, c.visits);
+                // Promise to be back one lap from now (D7). Clusters not yet contacted are
+                // still in DISCOVERY, where the UAV waits T_b / 2 on average for the CH to
+                // listen, not hoverBudget; this only lengthens promises made in the survey lap.
+                // (The worst case, T_b + t_l per stop, over-promises early clusters, and the
+                // UAV's hold there then makes the rest of the next lap late.)
+                const SimConfig& cfg = m_w->cfg;
+                double surveyExtra = std::max(0.0, 0.5 * cfg.dutyPeriod - cfg.hoverBudget);
+                double eta = Simulator::Now().GetSeconds() + END_GUARD + m_period +
+                             m_uncontacted * surveyExtra;
                 m_promise[m.cluster] = eta;
                 Msg plan;
                 plan.type = MsgType::PLAN;

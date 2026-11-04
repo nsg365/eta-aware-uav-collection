@@ -99,7 +99,7 @@ clusters it leaves.
 
 **Who sets T_k — Decided (2026-10-23): fixed period.** T_k = now + P, where P is the nominal
 period of the committed timetable: tour legs at `planSpeedFactor·v` plus `hoverBudget` per stop
-(already computed in `UavApp::BuildTimetable`, about 300–320 s at defaults). P is derived from
+(computed in `UavApp::PromisePeriod`, about 300–320 s at defaults). P is derived from
 the tour, not hand-tuned. The same rule applies to *every* routing policy (tour, heuristics,
 PPO), so all comparison models run under the same wake mechanism and differ only in visit order.
 Broken promises are a reward penalty (R_miss) in the first PPO version, not a hard action mask.
@@ -119,12 +119,14 @@ loop (an earlier "now + measured lap time" rule drifted to ~285 s ETA error).
   CH that is already asleep.
 - Deviation 2: one added parameter, P, derived from the tour.
 
-**What is implemented already.** Option (a) with a committed periodic timetable (tour policy).
-Lap 0 (survey lap) budgets T_b + t_l of hover per stop because CHs are in DISCOVERY. Later laps
-budget `hoverBudget` per stop, and legs are planned at `planSpeedFactor·v` for slack. At each
-contact the UAV promises the cluster's slot in the next lap. Today `wakeMode=scheduled` is
-rejected for policies that do not commit to an order. Phase 2 lifts this: every policy
-promises T_k = now + P.
+**What is implemented (4 Nov).** At each contact the UAV promises T_k = now + P. P is one tour
+lap with legs at `planSpeedFactor·v` and `hoverBudget` per stop. While some clusters have never
+been contacted (survey lap), the promise adds T_b/2 − `hoverBudget` per such cluster, because
+the UAV waits about T_b/2 for a CH in DISCOVERY (measured: 3.7–5.1 s per stop at T_b = 10 s).
+Budgeting the worst case T_b + t_l instead over-promised the first clusters by about 2 min; the
+UAV's hold there made the rest of the next lap late. This replaced a committed absolute timetable
+(slot of cluster k in lap n), which works only for the fixed tour. `wakeMode=scheduled` is still
+rejected for policies that do not commit to an order; Phase 2 lifts this.
 
 **Rejected alternatives.** No promises / adaptive duty cycling only (drops the paper's ETA-window
 contribution). A separate wake-up or long-range radio to deliver ETAs (hardware assumption
@@ -132,7 +134,8 @@ outside the paper's scope).
 
 ## D8. Early UAV holds until the window opens — Decided
 
-If the UAV arrives before τ − w, it keeps polling until the window opens plus `contactWait`.
+If the UAV arrives before τ − w, it keeps polling until the window opens plus `contactWait`. If it arrives after
+τ + w, it holds until the next retry window opens (D16), unless all retries are over.
 Without this, an early arrival is a guaranteed miss (observed in the first run). Consequence: an
 early arrival costs UAV hover energy, not CH energy. Since the UAV holds, only the *late* side of
 the window needs width. Phase 2 should use an asymmetric window
@@ -199,8 +202,15 @@ The Wi-Fi currents configure ns-3's `WifiRadioEnergyModel`. The supply voltage u
   committed schedule needs slack (D7).
 - **D15.** The UAV flies at constant altitude H everywhere, including the depot. Takeoff and
   landing are not modelled.
-- **D16.** A missed scheduled window sends the CH back to DISCOVERY. Retry windows (eq. 20) are
-  Phase 1.
+- **D16.** Retry windows (eq. 20). When a promised window [τ − w, τ + w] closes without contact,
+  the CH sleeps and opens retry m = 1..`maxMissedRetries` at τ + w + m·`retryInterval` for
+  `retryListen` s; after the last one it returns to DISCOVERY. A late UAV holds for the next retry
+  window (D8). A missed promise is counted once (`windows_missed` = `promise_violations`); a
+  contact in a retry window counts as `retry_successes`, not as a met window. Defaults 12 s /
+  10 s / 5 retries were chosen from a sweep (N = 100, 5 seeds, 10 % of legs delayed 10–30 s,
+  with and without CH failures): spacing 30 s recovered as many misses but the UAV's longer holds
+  made later clusters late and raised CH energy (172 J vs 106 J); 5 retries instead of 3
+  recovered 93 % instead of 79 % of meetings with CH failures on.
 - **D17.** PDR = delivered / generated over the horizon, including readings still buffered at
   the end (`in_buffer_at_end`). This is about 2 % at defaults; report it alongside PDR.
 
