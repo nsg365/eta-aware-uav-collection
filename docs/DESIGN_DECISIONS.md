@@ -165,7 +165,7 @@ and report CH listening energy vs meeting success. The knee of that curve is the
 
 ## D11. Energy scale and radio parameters — Decided (with documented assumptions)
 
-**Initial energy.** Each sensor starts with \(E_0 = 500\) J. This is a simulation assumption selected to allow energy depletion within the 2-hour simulation horizon; it is not a measured battery capacity. Results should be compared across variants using the same energy budget.
+**Initial energy.** Each sensor starts with E₀ = 500 J. This is a simulation assumption selected to allow energy depletion within the 2-hour simulation horizon; it is not a measured battery capacity. Results should be compared across variants using the same energy budget.
 
 **802.15.4 member-to-CH link.** The analytical energy model uses a 3 V supply and the following CC2420 reference-radio values:
 

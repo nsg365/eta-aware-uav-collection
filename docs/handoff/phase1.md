@@ -39,21 +39,13 @@ The energy parameters affect the energy consumed by sensor nodes and Cluster Hea
 The CC2420 radio was considered for the IEEE 802.15.4 communication model, while ESP32 Wi-Fi specifications were considered for the CH–UAV communication model.
 
 | Parameter | Previous value | Updated / retained value | Explanation |
-
 |---|---:|---:|---|
-
 | 802.15.4 TX power | 0.0522 W | 0.0522 W | Consistent with CC2420 TX current of 17.4 mA at 3 V |
-
 | 802.15.4 RX power | 0.0564 W | 0.0564 W | Consistent with CC2420 RX current of 18.8 mA at 3 V |
-
 | Wi-Fi TX current | 0.24 A | 0.19 A | Updated to 190 mA, corresponding to the ESP32 802.11g TX specification at 16 dBm |
-
 | Wi-Fi RX current | 0.10 A | 0.10 A | Retained; consistent with the approximately 95–100 mA datasheet range |
-
 | Wi-Fi idle current | 0.10 A | 0.10 A | Retained as an approximation |
-
 | Wi-Fi sleep current | 0.00015 A | 0.00015 A | Reviewed; exact support for this value needs to be stated cautiously |
-
 | Initial sensor energy | 500 J | 500 J | Retained as an experimental assumption |
 
 The 802.15.4 TX and RX power values were already consistent with the CC2420 specifications, so they were retained rather than changed.
@@ -155,7 +147,6 @@ Config `configs/test_uav_delay.toml`: 60 sensors, 5 seeds, 600 s horizon, ±20 s
 | 4 | 68.85 % | 63.33 % | −5.52 pp |
 | 5 | 75.27 % | 63.56 % | −11.71 pp |
 | **Mean** | **70.02 %** | **65.57 %** | **−4.45 pp** |
-
 | Mean per run | Baseline | All legs delayed |
 |---|---:|---:|
 | Delivered readings | 2506.8 | 2348.4 |
@@ -192,11 +183,7 @@ The PDR calculation was verified in `simulation/ns3/wsn-uav/world.cc`.
 
 The metric is calculated as:
 
-\[
-
-\text{PDR}=\frac{\text{delivered readings}}{\text{generated readings}}
-
-\]
+**PDR = delivered readings / generated readings**
 
 The metric represents the fraction of generated readings received by the UAV within the simulation horizon.
 
@@ -220,19 +207,7 @@ The output metrics include:
 
 For the lossless delay experiments, the accounting was consistent with:
 
-\[
-
-\text{generated}
-
-=
-
-\text{delivered}
-
-+
-
-\text{in\_buffer\_at\_end}
-
-\]
+**generated = delivered + in_buffer_at_end**
 
 This verification was important to ensure that the PDR improvement was not caused by a change in the metric definition.
 
@@ -418,17 +393,13 @@ A primary CH failure can occur due to random failure or energy depletion.
 
 We implemented a random failure mechanism using a hazard rate (`chFailureRate`). The probability of a failure during a heartbeat interval is calculated as:
 
-\[
-
-P_{\text{failure}}=1-e^{-\lambda \Delta t}
-
-\]
+**P(failure) = 1 − e^(−λ·Δt)**
 
 where:
 
-- \(\lambda\) is the configured CH failure rate.
+- λ is the configured CH failure rate (`chFailureRate`, per second).
 
-- \(\Delta t\) is the heartbeat interval.
+- Δt is the heartbeat interval (`heartbeatInterval`, seconds).
 
 The primary CH periodically sends heartbeats to its backup CH. If the backup misses a configured number of consecutive heartbeats (`missedHeartbeats`), it detects the primary CH failure and initiates the takeover process.
 
@@ -592,19 +563,12 @@ Retry defaults include retryInterval (10 seconds) and maxMissedRetries (3); expe
 The reliability metrics output includes:
 
 | Metric | Meaning |
-
 |---|---|
-
 | retry_attempts | Number of retry attempts scheduled/recorded. |
-
 | promise_violations | Missed promised contact/window events. |
-
 | retry_exhaustions | Number of times the configured retry limit was exhausted. |
-
 | rebootstrap_count | Number of rebootstrap transitions into DISCOVERY after retry exhaustion. |
-
 | lost_during_failover | Readings tracked as lost during failover. |
-
 | latest_failover_time_s | Time of the latest failover; null when no failover occurred. |
 
 The per-cluster output also records lost_during_failover and last_failover_time_s.
