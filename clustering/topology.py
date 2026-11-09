@@ -27,6 +27,9 @@ class TopologyParams:
     num_sensors: int = 100
     area_m: float = 500.0
     seed: int = 1
+    deployment_mode: str = "uniform"  # uniform | gaussian_hotspot
+    hotspot_count: int = 4
+    hotspot_std_m: float = 25.0
     sensor_range_m: float = 60.0  # R_s: 802.15.4 member-to-CH range
     dbscan_kappa: float = 0.8  # eps = kappa * R_s  (kappa <= 1)
     dbscan_min_samples: int = 3
@@ -55,10 +58,43 @@ class Cluster:
     backup: int = -1
 
 
-def generate_positions(p: TopologyParams) -> np.ndarray:
-    rng = np.random.default_rng(p.seed)
-    return rng.uniform(0.0, p.area_m, size=(p.num_sensors, 2))
+# def generate_positions(p: TopologyParams) -> np.ndarray:
+#     rng = np.random.default_rng(p.seed)
+#     return rng.uniform(0.0, p.area_m, size=(p.num_sensors, 2))
 
+def generate_positions(p: TopologyParams) -> np.ndarray:
+    """Generate uniform or Gaussian-hotspot sensor positions."""
+    rng = np.random.default_rng(p.seed)
+
+    if p.deployment_mode == "uniform":
+        return rng.uniform(0.0, p.area_m, size=(p.num_sensors, 2))
+
+    if p.deployment_mode == "gaussian_hotspot":
+        if p.hotspot_count < 1:
+            raise ValueError("hotspot_count must be at least 1")
+        if p.hotspot_std_m <= 0:
+            raise ValueError("hotspot_std_m must be positive")
+
+        centers = rng.uniform(
+            0.0, p.area_m, size=(p.hotspot_count, 2)
+        )
+
+        assignments = rng.integers(
+            0, p.hotspot_count, size=p.num_sensors
+        )
+
+        pos = centers[assignments] + rng.normal(
+            loc=0.0,
+            scale=p.hotspot_std_m,
+            size=(p.num_sensors, 2)
+        )
+
+        # Keep all sensors inside the deployment area.
+        return np.clip(pos, 0.0, p.area_m)
+
+    raise ValueError(
+        f"Unknown deployment mode: {p.deployment_mode}"
+    )
 
 def feasible_candidates(pos: np.ndarray, members: np.ndarray, meet: np.ndarray,
                         p: TopologyParams) -> np.ndarray:

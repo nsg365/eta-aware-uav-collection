@@ -1,0 +1,39 @@
+[experiment]
+name = "eta_multiseed"
+num_sensors = [100]
+seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+[topology]
+area_m = 500.0
+sensor_range_m = 80.0
+dbscan_kappa = 0.8
+dbscan_min_samples = 3
+uav_range_m = 30.0
+alpha = 0.5
+min_candidates = 2
+depot_x = 0.0
+depot_y = 0.0
+
+[simulation]
+simTime = 7200.0
+wakeMode = "scheduled"
+etaMinSamples = 5
+adaptiveLateMargin = 20.0
+uavDelayProb = 0.5
+uavDelayMin = 5.0
+uavDelayMax = 15.0
+[[variant]]
+name = "p80"
+etaQuantile = 0.80
+
+[[variant]]
+name = "p90"
+etaQuantile = 0.90
+
+[[variant]]
+name = "p95"
+etaQuantile = 0.95
+
+[[variant]]
+name = "p99"
+etaQuantile = 0.99

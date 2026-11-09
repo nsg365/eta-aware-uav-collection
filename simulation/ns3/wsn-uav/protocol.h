@@ -32,7 +32,11 @@ struct Msg
     uint32_t count = 0;
     int64_t timeNs = 0;
     int64_t halfWidthNs = 0;
+    int64_t lateWidthNs = 0;
     uint32_t primaryId = 0;
+    uint64_t bufferAtContact = 0;
+    double residualEnergy = 0.0;
+    int64_t contactTimeNs = 0;
 };
 
 inline ns3::Ptr<ns3::Packet>

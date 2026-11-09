@@ -417,6 +417,7 @@ World::WriteOutputs(double wallSeconds) const
     uint32_t wSched = 0, wOpened = 0, wMet = 0, wMissed = 0;
     uint32_t discoveryContacts = 0;
     double wListen = 0, awake = 0;
+    double scheduledWindowEnergy = 0.0;
     for (const auto& c : clusters)
     {
         nVisits += c.visits;
@@ -429,6 +430,7 @@ World::WriteOutputs(double wallSeconds) const
         discoveryContacts += c.discoveryContacts;
         wListen += c.windowListenTime;
         awake += c.wifiAwakeTime;
+        scheduledWindowEnergy += c.scheduledWindowEnergyJ;
     }
     uint32_t wClosed = wMet + wMissed;
 
@@ -449,7 +451,7 @@ World::WriteOutputs(double wallSeconds) const
             nEta++;
         }
     }
-    
+
     uint64_t totalPrimaryFailures = 0;
 uint64_t totalBackupPromotions = 0;
 uint64_t totalFailuresNoBackup = 0;
@@ -492,7 +494,7 @@ for (const auto& c : clusters)
       << "  \"reliability\": {\"primary_failures\": " << totalPrimaryFailures
       << ", \"backup_promotions\": " << totalBackupPromotions
      << ", \"failures_no_backup\": " << totalFailuresNoBackup
-      << ", \"failures_backup_dead\": " << totalFailuresBackupDead << "},\n" 
+      << ", \"failures_backup_dead\": " << totalFailuresBackupDead << "},\n"
      << "  \"energy\": {\"sensor_total_J\": " << eTotal << ", \"sensor_mean_J\": " << eTotal / N
       << ", \"primary_ch_mean_J\": " << nan(nCh > 0, eCh / nCh)
       << ", \"non_primary_mean_J\": " << nan(nMem > 0, eMem / nMem) << ", \"wifi_total_J\": " << eWifi
@@ -522,6 +524,8 @@ for (const auto& c : clusters)
 << nan(cfg.wakeMode == "scheduled", 2 * cfg.wakeHalfWidth)
 << ", \"mean_window_listen_s\": "
 << nan(wClosed > 0, wListen / wClosed)
+<< ", \"scheduled_window_energy_J\": "
+<< scheduledWindowEnergy
 << ", \"ch_wifi_awake_fraction\": "
 << awake / (K * T) << "},\n"
       << "  \"eta\": {\"n\": " << nEta << ", \"mean_signed_error_s\": " << nan(nEta > 0, sumSigned / nEta)
@@ -535,7 +539,7 @@ for (const auto& c : clusters)
       "primary_failures,backup_promotions,failures_no_backup,failures_backup_dead,"
       "visits,contacts,failed_contacts,discovery_contacts,"
       "windows_scheduled,windows_opened,windows_met,windows_missed,"
-      "wifi_awake_s,residual_fraction\n";
+      "wifi_awake_s,scheduled_window_energy_J,residual_fraction\n";
     for (size_t k = 0; k < K; ++k)
     {
         const auto& c = clusters[k];
@@ -547,7 +551,8 @@ for (const auto& c : clusters)
            << c.discoveryContacts << ","
            << c.windowsScheduled << "," << c.windowsOpened << ","
            << c.windowsMet << "," << c.windowsMissed << ","
-           << c.wifiAwakeTime << "," << clusterResidual[k] / (cfg.initialEnergy * c.size) << "\n";
+           << c.wifiAwakeTime << "," << c.scheduledWindowEnergyJ << ","
+           << clusterResidual[k] / (cfg.initialEnergy * c.size) << "\n";
     }
 
     std::ofstream pn(cfg.outDir + "/per_node.csv");
@@ -561,12 +566,47 @@ for (const auto& c : clusters)
            << Residual(s, T) << "," << s.alive << "," << s.deathTime << "\n";
     }
 
+    // std::ofstream pv(cfg.outDir + "/visits.csv");
+    // pv << "cluster_id,depart_s,arrive_s,contact_s,end_s,leg_distance_m,promised_eta_s,readings\n";
+    // for (const auto& v : visits)
+    // {
+    //     pv << v.cluster << "," << v.departTime << "," << v.arriveTime << "," << v.contactTime << ","
+    //        << v.endTime << "," << v.legDistance << "," << v.promisedEta << "," << v.readings << "\n";
+    // }
     std::ofstream pv(cfg.outDir + "/visits.csv");
-    pv << "cluster_id,depart_s,arrive_s,contact_s,end_s,leg_distance_m,promised_eta_s,readings\n";
-    for (const auto& v : visits)
+
+    pv << "cluster_id,depart_s,arrive_s,contact_s,end_s,"
+        "leg_distance_m,promised_eta_s,readings,stops_since_promise\n";
+
+    // Store the index of the last successful visit for each cluster.
+    std::vector<int> lastVisitIndex(clusters.size(), -1);
+
+
+    for (size_t i = 0; i < visits.size(); ++i)
     {
-        pv << v.cluster << "," << v.departTime << "," << v.arriveTime << "," << v.contactTime << ","
-           << v.endTime << "," << v.legDistance << "," << v.promisedEta << "," << v.readings << "\n";
+        const auto& v = visits[i];
+
+        int stopsSincePromise = -1;
+
+        if (v.promisedEta >= 0.0 && v.promiseIssuedTime >= 0.0 )
+        {
+            stopsSincePromise = 0;
+
+        // Count UAV arrivals after the promise
+        // but before reaching the target cluster.
+            for (size_t j = 0; j < i; ++j)
+            {
+                if (visits[j].arriveTime > v.promiseIssuedTime)
+                {
+                    stopsSincePromise++;
+                }
+            }
+        }
+
+        pv << v.cluster << "," << v.departTime << "," << v.arriveTime << ","
+            << v.contactTime << "," << v.endTime << "," << v.legDistance << ","
+            << v.promisedEta << "," << v.readings << ","
+            << stopsSincePromise << "\n";
     }
 }
 

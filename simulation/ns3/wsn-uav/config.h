@@ -76,6 +76,9 @@ struct SimConfig
     double dutyPeriod = 10.0;   // T_b: discovery/duty-cycle period [s]
     double dutyListen = 1.0;    // t_l: listen time per period [s]
     double wakeHalfWidth = 20.0; // fixed half-width w of a scheduled window [s]
+    double adaptiveLateMargin = 20.0; // Empirical upper-quantile late-arrival margin [s]
+    double etaQuantile = 0.95;   // Empirical lateness percentile (0.80–0.99)
+    uint32_t etaMinSamples = 5;  // Minimum samples before adaptive estimation
     // Maximum absolute per-CH clock offset [s]
     double wDrift = 0.0;
     double planTimeout = 0.5;   // CH waits this long after DONE for a PLAN [s]
@@ -137,6 +140,9 @@ struct SimConfig
         cmd.AddValue("dutyPeriod", "Duty-cycle / discovery period T_b [s]", dutyPeriod);
         cmd.AddValue("dutyListen", "Listen time per duty period t_l [s]", dutyListen);
         cmd.AddValue("wakeHalfWidth", "Fixed scheduled wake-window half-width w [s]", wakeHalfWidth);
+        cmd.AddValue("adaptiveLateMargin", "Adaptive late-arrival wake margin [s]", adaptiveLateMargin);
+        cmd.AddValue("etaQuantile", "Empirical lateness percentile (0.80–0.99)", etaQuantile);
+        cmd.AddValue("etaMinSamples", "Minimum observations for adaptive ETA margin", etaMinSamples);
         cmd.AddValue("wDrift", "Maximum absolute per-CH clock offset [s]", wDrift);
         cmd.AddValue("planTimeout", "CH wait for PLAN after upload [s]", planTimeout);
         cmd.AddValue("chFailureRate", "Primary CH random failure hazard [1/s]", chFailureRate);

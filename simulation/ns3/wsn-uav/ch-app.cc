@@ -4,6 +4,7 @@
 #include "ns3/log.h"
 #include "ns3/simulator.h"
 #include "ns3/udp-socket-factory.h"
+#include "ns3/device-energy-model.h"
 
 #include <algorithm>
 
@@ -104,7 +105,24 @@ ClusterHeadApp::TrySleep()
     }
 }
 
-// ---------------------------------------------------------------- discovery / duty cycle
+void
+ClusterHeadApp::FinishWindowEnergyMeasurement()
+{
+    if (!m_windowEnergyTracking)
+    {
+        return;
+    }
+
+    Ptr<ns3::energy::DeviceEnergyModel> energy = m_w->sensors[m_sensorId].wifiEnergy;
+    if (energy)
+    {
+        double currentEnergyJ = energy->GetTotalEnergyConsumption();
+        m_c.scheduledWindowEnergyJ +=
+            std::max(0.0, currentEnergyJ - m_windowEnergyStartJ);
+    }
+
+    m_windowEnergyTracking = false;
+}
 
 void
 ClusterHeadApp::EnterDiscovery(bool initial)
@@ -134,20 +152,59 @@ ClusterHeadApp::DiscoverySleep()
 
 // ---------------------------------------------------------------- scheduled windows
 
+// void
+// ClusterHeadApp::OpenWindow(double closeAt)
+// {
+//     Wake();
+//     m_inWindow = true;
+//     m_c.windowsOpened++;
+//     m_windowOpen = Simulator::Now().GetSeconds();
+//     NS_LOG_UNCOND(
+//         "WINDOW OPEN: cluster=" << m_c.id
+//         << " time=" << m_windowOpen
+//         << " closeAt=" << closeAt);
+//     double in = std::max(0.0, closeAt - m_windowOpen);
+//     m_windowClose = Simulator::Schedule(Seconds(in), &ClusterHeadApp::CloseWindow, this);
+// }
+
 void
 ClusterHeadApp::OpenWindow(double closeAt)
 {
     Wake();
+
+    // Start measuring actual Wi-Fi radio energy for this scheduled window.
+    Ptr<ns3::energy::DeviceEnergyModel> energy = m_w->sensors[m_sensorId].wifiEnergy;
+    if (energy)
+    {
+        m_windowEnergyStartJ = energy->GetTotalEnergyConsumption();
+        m_windowEnergyTracking = true;
+    }
+
     m_inWindow = true;
     m_c.windowsOpened++;
     m_windowOpen = Simulator::Now().GetSeconds();
+
+    NS_LOG_UNCOND(
+        "WINDOW OPEN: cluster=" << m_c.id
+        << " time=" << m_windowOpen
+        << " closeAt=" << closeAt);
+
     double in = std::max(0.0, closeAt - m_windowOpen);
-    m_windowClose = Simulator::Schedule(Seconds(in), &ClusterHeadApp::CloseWindow, this);
+    m_windowClose = Simulator::Schedule(
+        Seconds(in),
+        &ClusterHeadApp::CloseWindow,
+        this);
 }
 
 void
 ClusterHeadApp::CloseWindow()
 {
+
+    FinishWindowEnergyMeasurement();
+    NS_LOG_UNCOND("WINDOW CLOSE: cluster=" << m_c.id
+        << " time=" << Simulator::Now().GetSeconds()
+        << " openedAt=" << m_windowOpen
+        << " awake=" << m_wantAwake);
     m_inWindow = false;
     m_c.windowsMissed++;
     m_c.windowListenTime += Simulator::Now().GetSeconds() - m_windowOpen;
@@ -176,6 +233,8 @@ ClusterHeadApp::Receive(Ptr<Socket> socket)
             m_cycleEvent.Cancel();
             if (m_inWindow)
             {
+                FinishWindowEnergyMeasurement();
+
                 m_windowClose.Cancel();
                 m_inWindow = false;
                 m_c.windowsMet++;
@@ -188,6 +247,11 @@ ClusterHeadApp::Receive(Ptr<Socket> socket)
             Wake();
             m_busy = true;
             m_contactSent = 0;
+            m_bufferAtContact = m_c.buffer;
+            m_contactTime = Simulator::Now().GetSeconds();
+
+            const Sensor& ch = m_w->sensors[m_sensorId];
+            m_residualEnergyAtContact = m_w->Residual(ch, m_contactTime);
             m_uav = InetSocketAddress(InetSocketAddress::ConvertFrom(from).GetIpv4(), UAV_PORT);
             SendNextFrame();
         }
@@ -197,25 +261,43 @@ ClusterHeadApp::Receive(Ptr<Socket> socket)
             m_busy = false;
             double now = Simulator::Now().GetSeconds();
             double eta = m.timeNs * 1e-9;
-            double w = m.halfWidthNs * 1e-9;
+            //double w = m.halfWidthNs * 1e-9;
+            double earlyWidth = m.halfWidthNs * 1e-9;
+            double lateWidth = m.lateWidthNs * 1e-9;
+            NS_LOG_UNCOND(
+            "CH ADAPTIVE: cluster=" << m_c.id
+            << " lateWidth=" << lateWidth
+            << " earlyWidth=" << earlyWidth);
 
             // Apply this CH's fixed clock offset to its interpretation of the ETA.
             double adjustedEta = eta - m_clockOffset;
 
             m_c.windowsScheduled++;
 
-            if (adjustedEta - w > now)
+            // if (adjustedEta - w > now)
+            // {
+            //     Sleep();
+            //     m_cycleEvent =
+            //         Simulator::Schedule(Seconds(adjustedEta - w - now),
+            //                         &ClusterHeadApp::OpenWindow,
+            //                         this,
+            //                         adjustedEta + w);
+            // }
+            // else
+            // {
+            //     OpenWindow(adjustedEta + w);
+            // }
+            double windowOpen = adjustedEta - earlyWidth;
+            double windowClose = adjustedEta + lateWidth;
+
+            if (windowOpen > now)
             {
                 Sleep();
-                m_cycleEvent =
-                    Simulator::Schedule(Seconds(adjustedEta - w - now),
-                                    &ClusterHeadApp::OpenWindow,
-                                    this,
-                                    adjustedEta + w);
+                m_cycleEvent = Simulator::Schedule(Seconds(windowOpen - now), &ClusterHeadApp::OpenWindow,this,windowClose);
             }
             else
             {
-                OpenWindow(adjustedEta + w);
+                OpenWindow(windowClose);
             }
         }
     }
@@ -247,6 +329,9 @@ ClusterHeadApp::SendNextFrame()
     m.type = MsgType::DONE;
     m.count = static_cast<uint32_t>(m_contactSent);
     m.primaryId = m_sensorId;
+    m.bufferAtContact = m_bufferAtContact;
+    m.residualEnergy = m_residualEnergyAtContact;
+    m.contactTimeNs = static_cast<int64_t>(m_contactTime * 1e9);
     m_socket->SendTo(MakePacket(m), 0, m_uav);
     m_planTimeout = Simulator::Schedule(Seconds(cfg.planTimeout), &ClusterHeadApp::PlanTimeout, this);
 }
@@ -272,6 +357,7 @@ ClusterHeadApp::AfterContact()
 void
 ClusterHeadApp::OnDeath()
 {
+    FinishWindowEnergyMeasurement();
     if (m_wantAwake)
     {
         m_c.wifiAwakeTime += Simulator::Now().GetSeconds() - m_awakeSince;

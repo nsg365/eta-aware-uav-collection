@@ -60,6 +60,8 @@ struct Cluster
     uint32_t failuresNoBackup = 0;
     uint32_t failuresBackupDead = 0;
 
+    double scheduledWindowEnergyJ = 0.0;
+
     // Primary failure detection
     uint32_t missedHeartbeatCount = 0;
     bool primaryFailureDetected = false;
@@ -85,6 +87,7 @@ struct VisitRecord
     double departTime, arriveTime, contactTime, endTime; // contactTime < 0: no contact
     double legDistance;
     double promisedEta; // < 0 if no promise was made for this arrival
+    double promiseIssuedTime; // Time when the promise was created
     uint64_t readings;
 };
 

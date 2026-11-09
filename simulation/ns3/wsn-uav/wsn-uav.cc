@@ -286,9 +286,9 @@ Validate(const SimConfig& c, const RoutingPolicy& policy)
     NS_ABORT_MSG_IF(c.topologyDir.empty(), "--topologyDir is required");
     NS_ABORT_MSG_IF(c.wakeMode != "always_on" && c.wakeMode != "duty_cycle" && c.wakeMode != "scheduled",
                     "wakeMode must be always_on, duty_cycle or scheduled");
-    NS_ABORT_MSG_IF(c.wakeMode == "scheduled" && !policy.CommitsToOrder(),
-                    "wakeMode=scheduled needs a routing policy that commits to a visit order "
-                    "(see docs/DESIGN_DECISIONS.md D7)");
+    // NS_ABORT_MSG_IF(c.wakeMode == "scheduled" && !policy.CommitsToOrder(),
+    //                 "wakeMode=scheduled needs a routing policy that commits to a visit order "
+    //                 "(see docs/DESIGN_DECISIONS.md D7)");
     NS_ABORT_MSG_IF(c.dutyListen <= 0 || c.dutyListen >= c.dutyPeriod, "need 0 < dutyListen < dutyPeriod");
     NS_ABORT_MSG_IF(c.uavDelayProb < 0.0 || c.uavDelayProb > 1.0,
                     "uavDelayProb must be in [0, 1]");

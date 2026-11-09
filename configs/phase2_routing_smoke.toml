@@ -1,0 +1,44 @@
+[experiment]
+name = "phase2_routing_smoke"
+num_sensors = [100]
+seeds = [1]
+
+[topology]
+area_m = 500.0
+sensor_range_m = 80.0
+dbscan_kappa = 0.8
+dbscan_min_samples = 3
+uav_range_m = 30.0
+alpha = 0.5
+min_candidates = 2
+depot_x = 0.0
+depot_y = 0.0
+
+[simulation]
+simTime = 1200.0
+wakeMode = "scheduled"
+etaMinSamples = 5
+adaptiveLateMargin = 20.0
+uavDelayProb = 0.5
+uavDelayMin = 5.0
+uavDelayMax = 15.0
+
+[[variant]]
+name = "tour"
+routing = "tour"
+etaQuantile = 0.95
+
+[[variant]]
+name = "nearest_feasible"
+routing = "nearest-feasible"
+etaQuantile = 0.95
+
+[[variant]]
+name = "data_greedy"
+routing = "data-greedy"
+etaQuantile = 0.95
+
+[[variant]]
+name = "energy_data_score"
+routing = "energy-data-score"
+etaQuantile = 0.95

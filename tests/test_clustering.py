@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from clustering.topology import TopologyParams, build_topology, feasible_candidates
+from clustering.topology import TopologyParams, build_topology, feasible_candidates, generate_positions
 
 
 @pytest.fixture(params=[(60, 1), (100, 2), (150, 3)])
@@ -55,3 +55,50 @@ def test_deterministic_for_seed():
     assert np.array_equal(a[0], b[0])
     assert [c.primary for c in a[1]] == [c.primary for c in b[1]]
     assert a[2] == b[2]
+
+def test_gaussian_hotspot_positions_are_deterministic():
+    p = TopologyParams(
+        num_sensors=100,
+        seed=42,
+        deployment_mode="gaussian_hotspot",
+        hotspot_count=4,
+        hotspot_std_m=25.0,
+    )
+
+    a = generate_positions(p)
+    b = generate_positions(p)
+
+    assert np.array_equal(a, b)
+
+
+def test_gaussian_hotspot_positions_within_area():
+    p = TopologyParams(
+        num_sensors=100,
+        seed=42,
+        area_m=500.0,
+        deployment_mode="gaussian_hotspot",
+    )
+
+    pos = generate_positions(p)
+
+    assert pos.shape == (100, 2)
+    assert np.all(pos >= 0.0)
+    assert np.all(pos <= 500.0)
+
+
+def test_gaussian_hotspot_topology_builds():
+    p = TopologyParams(
+        num_sensors=100,
+        seed=42,
+        sensor_range_m=80.0,
+        deployment_mode="gaussian_hotspot",
+        hotspot_count=4,
+        hotspot_std_m=25.0,
+    )
+
+    pos, clusters, order, diag = build_topology(p)
+
+    members = np.concatenate([c.members for c in clusters])
+
+    assert sorted(members.tolist()) == list(range(100))
+    assert sorted(order) == list(range(len(clusters)))

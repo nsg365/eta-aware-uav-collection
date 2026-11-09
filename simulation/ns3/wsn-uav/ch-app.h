@@ -40,6 +40,7 @@ class ClusterHeadApp : public ns3::Application
     void Wake();
     void Sleep();
     void TrySleep();
+    void FinishWindowEnergyMeasurement();
 
     void EnterDiscovery(bool initial);
     void DiscoveryListen();
@@ -68,7 +69,12 @@ class ClusterHeadApp : public ns3::Application
     bool m_busy = false; // uploading or waiting for PLAN
     bool m_inWindow = false;
     double m_windowOpen = 0;
+    bool m_windowEnergyTracking = false;
+    double m_windowEnergyStartJ = 0.0;
     uint64_t m_contactSent = 0;
+    uint64_t m_bufferAtContact = 0;
+    double m_residualEnergyAtContact = 0.0;
+    double m_contactTime = 0.0;
 
     ns3::EventId m_cycleEvent;  // discovery / window open
     ns3::EventId m_windowClose;
