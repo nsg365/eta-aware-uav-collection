@@ -27,8 +27,8 @@ Phase 2 and PPO is Phase 3. See [docs/TEAM_PLAN.md](docs/TEAM_PLAN.md).
 ## Quick start (after setup)
 
 ```bash
-scripts/link_ns3.sh && (cd ../ns3-workspace/ns-3.47 && ./ns3 build wsn-uav)
-python3 -m pytest                                                    # 22 tests
+scripts/link_ns3.sh && (cd ../ns3-workspace/ns-3.47 && ./ns3 build wsn-uav wsn-uav-range)
+python3 -m pytest                                                    # 26 tests
 
 # one run
 python3 -m clustering.topology --config configs/default.toml --out results/topo

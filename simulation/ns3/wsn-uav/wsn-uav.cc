@@ -311,6 +311,8 @@ Validate(const SimConfig& c, const RoutingPolicy& policy)
 
     NS_ABORT_MSG_IF(c.retryInterval <= 0.0,
                     "retryInterval must be > 0");
+    NS_ABORT_MSG_IF(c.retryListen <= 0.0 || c.retryListen >= c.retryInterval,
+                    "need 0 < retryListen < retryInterval");
 
     NS_ABORT_MSG_IF(c.maxMissedRetries == 0,
                     "maxMissedRetries must be >= 1");

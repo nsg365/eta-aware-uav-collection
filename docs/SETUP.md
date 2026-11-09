@@ -72,8 +72,8 @@ than a full ns-3 build and is all this project needs. The build itself happens i
 cd ~/mlown
 git clone <your-team-repo-url> wsn-uav
 cd wsn-uav
-scripts/link_ns3.sh                          # creates ns-3.47/scratch/wsn-uav -> this repo
-(cd ../ns3-workspace/ns-3.47 && ./ns3 build wsn-uav)
+scripts/link_ns3.sh                          # links ns-3.47/scratch/wsn-uav and wsn-uav-range -> this repo
+(cd ../ns3-workspace/ns-3.47 && ./ns3 build wsn-uav wsn-uav-range)
 ```
 
 The first build compiles the ns-3 modules and is the slow step: measured 3 min on a 10-core Mac; expect roughly 10–30 min on a 4–8-core laptop under WSL (estimate, not measured).
@@ -94,7 +94,7 @@ pip install -r requirements.txt
 ### 6. Check everything works
 
 ```bash
-python3 -m pytest                  # expect: 22 passed
+python3 -m pytest                  # expect: 26 passed
 python3 -m experiments.run_experiment configs/example_wake_modes.toml
 python3 -m analysis.aggregate results/wake_modes/runs.csv
 ```

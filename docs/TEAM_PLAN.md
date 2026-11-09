@@ -65,34 +65,48 @@ Tasks:
    retries, re-bootstraps, promise violations.
 
 Done when:
-- [ ] Tests cover failure → promotion, missed meeting → retry (no failover), and data
+- [x] Tests cover failure → promotion, missed meeting → retry (no failover), and data
       conservation with failures on.
-- [ ] Wake-mode example experiment re-run with stressors on; results in `docs/handoff/phase1.md`.
-- [ ] Energy table with citations committed.
+- [x] Wake-mode example experiment re-run with stressors on; results in `docs/handoff/phase1.md`.
+- [x] Energy table with citations committed.
+
+Status (4 Nov): done. Energy-triggered re-election (stretch) was not implemented.
 
 ## Phase 2 — UAV belief, baselines, ETA lateness and adaptive windows (Person 2 - pakku)
 
 Goal: everything the RL phase needs to plug into, plus the non-learning comparison models.
 
-Files: `simulation/ns3/wsn-uav/{uav-app.*, routing-policy.h}`, `clustering/`, new `eta/`
+Files: `simulation/ns3/wsn-uav/{uav-app.*, routing-policy.h, protocol.h, ch-app.*}`, `clustering/`,
+new `eta/`
+
+State at hand-off (4 Nov): the UAV already promises T_k = now + P (`UavApp::PromisePeriod`),
+with extra time on the survey lap; a missed window is followed by retry windows (eq. 20), and a
+late UAV waits for the next one (`UavApp::HoldFor`). See DESIGN_DECISIONS.md D7, D8, D16.
 
 Tasks:
 1. **UAV belief state** per cluster, held on the UAV (eqs. 26–27, Table II): last-contact buffer
    and energy, estimated generation rate λ̂ (EWMA), time since contact, time until its promise
    T_k, missed-meeting count, never-contacted flag. Expose it as one function returning a flat
    vector. **This becomes the PPO observation in Phase 3**, so document every entry and its unit.
-2. **Promise rule for every policy (D7):** T_k = now + P. Lift the restriction that scheduled
-   wake mode only works with the fixed tour.
+   The CH's DONE message does not carry its buffer level or residual energy yet: add these
+   fields to `Msg` in `protocol.h` and fill them in `ClusterHeadApp::SendNextFrame`.
+2. **Promise rule for every policy (D7):** T_k = now + P is implemented. Remaining: lift the
+   restriction that scheduled wake mode only works with the fixed tour (`CommitsToOrder()` check
+   in `Validate`, `wsn-uav.cc`).
 3. **Baselines (paper Sec. V, models 1–4):** nearest-feasible, data-greedy (on the *belief*, not
    true buffers), energy/data score, and TSP + fixed wake (exists). "Feasible" must exclude the
    current cluster and avoid ping-ponging between two clusters; document the definition.
+   Until a cluster has been contacted the belief is empty, so let every policy fly the first lap
+   in tour order (survey lap, paper Sec. III-G).
 4. **Clustered deployment generator** (Gaussian hotspots) as an alternative to uniform (D5).
 5. **ETA lateness model (D9, D10).** No deep learning needed:
    - from `visits.csv`, lateness e = actual arrival − promised arrival;
    - an empirical upper quantile q_p of e, per simple bin (e.g. by number of stops since the
      promise);
    - adaptive window: CH listens on [T_k − w_drift − w_margin, T_k + w_drift + q_p] (asymmetric,
-     D8);
+     D8). The PLAN message carries one half-width today: send the early and late widths
+     separately, and update both the CH window (`ch-app.cc`) and the UAV's hold
+     (`UavApp::HoldFor`), which also places the retry windows after the window's end;
    - sweep p ∈ {0.8, 0.9, 0.95, 0.99} and report CH listening energy vs meeting success.
 
 Done when:

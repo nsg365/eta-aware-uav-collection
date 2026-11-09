@@ -181,7 +181,10 @@ ClusterHeadApp::OpenWindow(double closeAt)
     }
 
     m_inWindow = true;
-    m_c.windowsOpened++;
+    if (!m_retryPending)
+    {
+        m_c.windowsOpened++;
+    }
     m_windowOpen = Simulator::Now().GetSeconds();
 
     NS_LOG_UNCOND(
@@ -206,9 +209,78 @@ ClusterHeadApp::CloseWindow()
         << " openedAt=" << m_windowOpen
         << " awake=" << m_wantAwake);
     m_inWindow = false;
-    m_c.windowsMissed++;
     m_c.windowListenTime += Simulator::Now().GetSeconds() - m_windowOpen;
-    NS_LOG_INFO(Simulator::Now().As(Time::S) << " cluster " << m_c.id << " missed meeting");
+
+    // A missed promise is counted once, when its scheduled window closes; retries that
+    // follow it are counted separately (retryAttempts, retrySuccesses, retryExhaustions).
+    if (!m_retryPending)
+    {
+        m_c.windowsMissed++;
+        m_c.promiseViolations++;
+        NS_LOG_INFO(Simulator::Now().As(Time::S) << " cluster " << m_c.id << " missed meeting");
+    }
+    ScheduleRetry();
+}
+
+// Eq. (20): retry m opens at tau+ + m * Delta_r, where tau+ is the end of the promised window,
+// and listens retryListen. Between retries the radio sleeps.
+void
+ClusterHeadApp::ScheduleRetry()
+{
+    if (m_dead)
+    {
+        return;
+    }
+    if (m_missedRetries >= m_w->cfg.maxMissedRetries)
+    {
+        RetryExhausted();
+        return;
+    }
+
+    m_missedRetries++;
+    m_retryPending = true;
+    m_c.retryAttempts++;
+
+    double now = Simulator::Now().GetSeconds();
+    double opens = m_promiseEnd + m_missedRetries * m_w->cfg.retryInterval;
+
+    m_cycleEvent.Cancel();
+    Sleep();
+    m_retryEvent = Simulator::Schedule(Seconds(std::max(0.0, opens - now)),
+                                       &ClusterHeadApp::RetryWindow,
+                                       this);
+
+    NS_LOG_INFO(Simulator::Now().As(Time::S)
+               << " cluster " << m_c.id
+               << " scheduled retry " << m_missedRetries
+               << " at " << opens);
+}
+
+void
+ClusterHeadApp::RetryWindow()
+{
+    if (m_dead || !m_retryPending)
+    {
+        return;
+    }
+
+    OpenWindow(Simulator::Now().GetSeconds() + m_w->cfg.retryListen);
+}
+
+
+void
+ClusterHeadApp::RetryExhausted()
+{
+    m_retryPending = false;
+    m_missedRetries = 0;
+
+    m_c.retryExhaustions++;
+    m_c.rebootstrapCount++;
+
+    NS_LOG_INFO(Simulator::Now().As(Time::S)
+               << " cluster " << m_c.id
+               << " exhausted retries; returning to DISCOVERY");
+
     EnterDiscovery(false);
 }
 
@@ -235,9 +307,21 @@ ClusterHeadApp::Receive(Ptr<Socket> socket)
             {
                 FinishWindowEnergyMeasurement();
 
+                // A successful UAV contact ends the current retry sequence.
+                if (m_retryPending)
+                {
+                    m_c.retrySuccesses++;
+                }
+                else
+                {
+                    m_c.windowsMet++;
+                }
+                m_retryEvent.Cancel();
+                m_retryPending = false;
+                m_missedRetries = 0;
+
                 m_windowClose.Cancel();
                 m_inWindow = false;
-                m_c.windowsMet++;
                 m_c.windowListenTime += Simulator::Now().GetSeconds() - m_windowOpen;
             }
             else
@@ -271,6 +355,7 @@ ClusterHeadApp::Receive(Ptr<Socket> socket)
 
             // Apply this CH's fixed clock offset to its interpretation of the ETA.
             double adjustedEta = eta - m_clockOffset;
+            m_promiseEnd = adjustedEta + lateWidth;
 
             m_c.windowsScheduled++;
 
@@ -368,6 +453,7 @@ ClusterHeadApp::OnDeath()
     m_windowClose.Cancel();
     m_sendEvent.Cancel();
     m_planTimeout.Cancel();
+    m_retryEvent.Cancel();
     m_c.bufferLostAtFailure = m_c.buffer;
     m_c.lostChDead += m_c.buffer;
     m_c.buffer = 0;

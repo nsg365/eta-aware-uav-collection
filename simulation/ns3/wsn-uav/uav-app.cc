@@ -76,7 +76,8 @@ UavApp::UavApp(World* world,
       m_missedMeetings(world->clusters.size(), 0),
       m_neverContacted(world->clusters.size(), true),
       m_arrivalsAtPromise(world->clusters.size(), 0),
-      m_lastStopsSincePromise(world->clusters.size(), 0)
+      m_lastStopsSincePromise(world->clusters.size(), 0),
+      m_contacted(world->clusters.size(), false)
 {
     m_activePrimary.reserve(world->clusters.size());
     for (const auto& cluster : world->clusters)
@@ -117,6 +118,9 @@ UavApp::StartApplication()
     {
         BuildTimetable(m_mob->GetPosition());
     }
+
+    m_period = PromisePeriod();
+    m_uncontacted = static_cast<uint32_t>(m_w->clusters.size());
     Depart();
 }
 
@@ -319,19 +323,9 @@ UavApp::Arrive()
     m_hovering = true;
     m_contact = false;
     m_planSent = false;
+    // Wait until the next valid listening window before polling.
+    double hold = HoldFor(m_visit.promisedEta, Simulator::Now().GetSeconds());
 
-    // In scheduled mode, wait until the promised listening window opens.
-    // The promise is shared by all routing policies.
-    double hold = 0.0;
-
-    if (cfg.wakeMode == "scheduled" && m_visit.promisedEta >= 0.0)
-    {
-        const double opens = m_visit.promisedEta - cfg.wDrift - cfg.wakeHalfWidth;
-
-        hold = std::max(
-            0.0,
-            opens - Simulator::Now().GetSeconds());
-    }
     if (hold > 0.0)
     {
         m_delayedPollEvent = Simulator::Schedule(
@@ -344,6 +338,7 @@ UavApp::Arrive()
         SendPoll();
     }
 
+    // Contact timeout and hover cap count from the end of the hold.
     m_waitEvent = Simulator::Schedule(Seconds(hold + cfg.contactWait), &UavApp::ContactTimeout, this);
     m_capEvent = Simulator::Schedule(Seconds(hold + cfg.maxHover), &UavApp::EndHover, this);
 }
@@ -391,7 +386,6 @@ UavApp::EndHover()
     Depart();
 }
 
-
 void
 UavApp::CalculateNominalPeriod(Vector depot)
 {
@@ -408,11 +402,11 @@ UavApp::CalculateNominalPeriod(Vector depot)
     double totalDistance = 0.0;
 
     // First leg: depot to the first cluster.
-    // const Cluster& first = m_w->clusters[order[0]];
+    const Cluster& first = m_w->clusters[order[0]];
 
-    // totalDistance += std::hypot(
-    //     first.meetX - depot.x,
-    //     first.meetY - depot.y);
+    totalDistance += std::hypot(
+        first.meetX - depot.x,
+        first.meetY - depot.y);
 
     // Middle legs: between consecutive clusters.
     for (size_t i = 1; i < K; ++i)
@@ -424,7 +418,7 @@ UavApp::CalculateNominalPeriod(Vector depot)
             current.meetX - previous.meetX,
             current.meetY - previous.meetY);
     }
-    const Cluster& first = m_w->clusters[order[0]];
+    //const Cluster& first = m_w->clusters[order[0]];
     // Final leg: from the last cluster back to the first.
     const Cluster& last = m_w->clusters[order[K - 1]];
 
@@ -468,6 +462,59 @@ UavApp::Slot(uint32_t k, uint32_t lap) const
     return lap == 0 ? m_lap0[i] : m_lap1Start + (lap - 1) * m_period + m_offset[i];
 }
 
+// P: one tour lap with legs at planSpeedFactor * uavSpeed plus hoverBudget per stop (D7).
+double
+UavApp::PromisePeriod() const
+{
+    const SimConfig& cfg = m_w->cfg;
+    const auto& order = m_w->tourOrder;
+    const double vPlan = cfg.planSpeedFactor * cfg.uavSpeed;
+    double period = 0;
+    for (size_t i = 0; i < order.size(); ++i)
+    {
+        const Cluster& a = m_w->clusters[order[i]];
+        const Cluster& b = m_w->clusters[order[(i + 1) % order.size()]];
+        period += cfg.hoverBudget + std::hypot(b.meetX - a.meetX, b.meetY - a.meetY) / vPlan;
+    }
+    return period;
+}
+
+// How long to hold at the meeting point so the CH is listening (D8). An early UAV waits for the
+// promised window [tau - w, tau + w]; a late one waits for the next retry window, which opens at
+// tau + w + m * retryInterval for m = 1..maxMissedRetries and lasts retryListen. After the last
+// retry the CH is back in DISCOVERY and no hold is needed.
+double
+UavApp::HoldFor(double promised, double now) const
+{
+    const SimConfig& cfg = m_w->cfg;
+    if (promised < 0 || cfg.wakeMode != "scheduled")
+    {
+        return 0;
+    }
+    if (now < promised - cfg.wakeHalfWidth)
+    {
+        return promised - cfg.wakeHalfWidth - now;
+    }
+    double end = promised + cfg.wakeHalfWidth;
+    if (now <= end)
+    {
+        return 0;
+    }
+    for (uint32_t m = 1; m <= cfg.maxMissedRetries; ++m)
+    {
+        double opens = end + m * cfg.retryInterval;
+        if (now < opens)
+        {
+            return opens - now;
+        }
+        if (now <= opens + cfg.retryListen)
+        {
+            return 0;
+        }
+    }
+    return 0;
+}
+
 void
 UavApp::Receive(Ptr<Socket> socket)
 {
@@ -505,6 +552,11 @@ UavApp::Receive(Ptr<Socket> socket)
             m_visit.contactTime = Simulator::Now().GetSeconds();
             m_waitEvent.Cancel();
             c.contacts++;
+            if (!m_contacted[m.cluster])
+            {
+                m_contacted[m.cluster] = true;
+                m_uncontacted--;
+            }
         }
         if (m.type == MsgType::DATA)
         {
