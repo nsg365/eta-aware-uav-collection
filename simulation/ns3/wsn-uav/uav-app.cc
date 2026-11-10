@@ -539,6 +539,7 @@ UavApp::Receive(Ptr<Socket> socket)
                 {
                     lateMargin = CalculateQuantile(it->second, m_w->cfg.etaQuantile);
                 }
+                lateMargin = std::max(0.0, lateMargin);
 
                 plan.lateWidthNs = static_cast<int64_t>(lateMargin * 1e9);
                 m_lateWidth[m.cluster] = plan.lateWidthNs * 1e-9;

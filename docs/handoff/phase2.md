@@ -38,9 +38,9 @@ The work is intended to provide the routing and state representation needed for 
 | ETA lateness estimation | Lateness recorded using promised and actual arrival times | Implemented |
 | Adaptive wake windows | Empirical lateness quantile used for late-window margin | Implemented |
 | Routing integration tests | Actual ns-3 simulations used | Passed |
-| Full automated test suite | 31 tests | Passed |
-| ETA p-sweep analysis | p80, p90, p95, p99 results collected | Preliminary results available |
-| ETA listening-energy comparison and plot | Requires final isolated listening-energy analysis and plot | Pending |
+| Full automated test suite | 35 tests | Passed |
+| ETA p-sweep analysis | p80, p90, p95, p99 across 10 seeds (40 runs) | Completed |
+| ETA listening-energy comparison and plot | Corrected scheduled-window energy measurement | Completed |
 | Final handoff documentation | This document | In progress |
 
 ---
@@ -464,8 +464,8 @@ The table reports the mean and standard deviation across ten seeds.
 | Metric | p80 | p90 | p95 | p99 |
 |---|---:|---:|---:|---:|
 | Runs | 10 | 10 | 10 | 10 |
-| Meeting success (%) | 79.144 ± 7.497 | 90.985 ± 1.562 | 92.197 ± 1.059 | 92.197 ± 1.059 |
-| Scheduled-window listening energy (J) | 8073.594 ± 1174.935 | 7624.195 ± 1077.210 | 7522.081 ± 1084.122 | 7526.501 ± 1081.461 |
+| Meeting success (%) | 76.370 ± 8.713 | 86.028 ± 7.547 | 88.205 ± 3.778 | 90.461 ± 1.761 |
+| Scheduled-window listening energy (J) | 8599.539 ± 1258.454 | 8127.952 ± 1138.531 | 8045.504 ± 1225.591 | 7906.702 ± 1362.212 |
 
 Summary CSV:
 
@@ -477,26 +477,30 @@ Plot:
 
 The plot compares mean meeting success against mean scheduled-window listening energy. Error bars represent one standard deviation across seeds on each axis.
 
+The scheduled-window energy values include energy accumulated during missed scheduled windows, measured when each window closes.
+
 ### 8.3 Interpretation
 
-Increasing the lateness quantile from p80 to p95 improves observed meeting success and reduces mean scheduled-window listening energy.
+Increasing the lateness quantile from p80 to p99 improves observed meeting success and reduces mean scheduled-window listening energy.
 
-- p80 has the lowest meeting success (79.144%) and highest mean listening energy (8073.594 J).
-- p90 improves meeting success to 90.985% and reduces mean energy to 7624.195 J.
-- p95 achieves the highest observed meeting success (92.197%) and the lowest mean energy (7522.081 J).
-- p99 has the same observed meeting success as p95, with a very similar mean energy (7526.501 J).
+- **p80** has the lowest meeting success (76.370%) and highest mean listening energy (8599.539 J).
+- **p90** improves meeting success to 86.028% and reduces mean energy to 8127.952 J.
+- **p95** achieves 88.205% meeting success with mean energy of 8045.504 J.
+- **p99** achieves the highest meeting success (90.461%) and the lowest mean scheduled-window listening energy (7906.702 J).
 
-For these tested seeds, p95 is a reasonable choice among the four variants. Increasing the quantile beyond p95 does not produce an observable meeting-success improvement.
+For these tested seeds, p99 performs best among the four variants in both mean meeting success and mean scheduled-window listening energy.
 
-Energy standard deviations are substantial, so differences in mean energy should not be interpreted as proof of statistical significance.
+However, the energy standard deviations are substantial. These results do not establish statistical significance or prove that p99 is universally optimal.
+
+The results should be interpreted within the tested network size, topology, and UAV-delay configuration.
 
 ### 8.4 Limitations
 
 1. The experiment covers one network size (100 sensors) and ten random seeds.
 2. There is substantial run-to-run variation in scheduled-window listening energy.
-3. Identical p95 and p99 mean meeting success does not establish equivalence under other configurations.
+3. Although p99 has higher mean meeting success than p95 in this experiment, the results do not establish that the difference is statistically significant.
 4. Scheduled-window listening energy must be distinguished from total primary cluster-head energy and overall Wi-Fi awake time.
-5. These results do not establish that p95 is optimal for every topology, network size, or delay distribution.
+5. These results do not establish that p99 is optimal for every topology, network size, or delay distribution.
 
 ## 9. Routing Baseline Experiment
 
@@ -691,13 +695,13 @@ Final result:
 
 ```text
 ========================= test session starts ==========================
-collected 31 items
+collected 35 items
 
 tests/test_clustering.py       19 passed
 tests/test_routing_policies.py  6 passed
-tests/test_simulation.py        6 passed
+tests/test_simulation.py        10 passed
 
-========================= 31 passed in 18.87s ==========================
+========================= 35 passed in 18.87s ==========================
 ```
 
 ### Test coverage summary
@@ -706,8 +710,8 @@ tests/test_simulation.py        6 passed
 |---|---:|---|
 | `tests/test_clustering.py` | 19 | Passed |
 | `tests/test_routing_policies.py` | 6 | Passed |
-| `tests/test_simulation.py` | 6 | Passed |
-| **Total** | **31** | **Passed** |
+| `tests/test_simulation.py` | 10 | Passed |
+| **Total** | **35** | **Passed** |
 
 The tests cover:
 
@@ -849,9 +853,11 @@ These metrics describe different aspects of energy consumption and radio activit
 
 ### 14.3 Quantile selection
 
-P95 has the lowest observed mean scheduled-window listening energy and ties P99 on meeting success in the current experiment.
+P99 has the highest observed mean meeting success (90.461%) and the lowest mean scheduled-window listening energy (7906.702 J) among the four tested variants.
 
-However, the energy standard deviations are substantial. The results do not establish statistical significance or prove that p95 is universally optimal.
+P95 achieves 88.205% meeting success and 8045.504 J mean scheduled-window listening energy.
+
+However, the energy standard deviations are substantial. The results do not establish statistical significance or prove that p99 is universally optimal.
 
 ### 14.4 Nearest-feasible coverage
 
@@ -887,7 +893,7 @@ Additional network sizes and delay configurations would strengthen the generalit
 | Ten-seed routing comparison | Run |
 | Cluster coverage analysis | Run |
 | Routing integration tests | 6 passed |
-| Full automated test suite | 31 passed |
+| Full automated test suite | 35 passed |
 | Final documentation/configuration audit | Pending |
 | Final Git review and commit | Pending |
 
@@ -898,13 +904,16 @@ The core Phase 2 implementation and automated tests are complete.
 
 The routing baselines have been evaluated across ten seeds, and the ETA quantile experiment has been completed across ten seeds for each of p80, p90, p95, and p99 (40 runs total).
 
-The ETA analysis now includes:
-- A comparison of meeting success and scheduled-window listening energy.
-- Mean and standard deviation across ten seeds.
-- A generated summary CSV.
-- An energy-versus-meeting-success plot.
+The results indicate that p99 achieves the highest observed mean meeting success (90.461%) and the lowest mean scheduled-window listening energy (7906.702 J) among the tested variants.
 
-The results indicate that p95 achieves the highest observed meeting success (tied with p99) and the lowest mean scheduled-window listening energy among the tested variants. These findings are limited to the current experiment configuration.
+These findings are based on ten seeds and are limited to the current experiment configuration.
+
+The ETA analysis includes:
+- A comparison of meeting success and corrected scheduled-window listening energy.
+- Mean and standard deviation across ten seeds.
+- A regenerated summary CSV.
+- An updated energy-versus-meeting-success plot.
+- Energy accounting that includes missed scheduled windows.
 
 Before the Phase 2 handoff is finalized, the remaining work is:
 
@@ -912,4 +921,4 @@ Before the Phase 2 handoff is finalized, the remaining work is:
 2. Review the final Git changes and ensure generated result files are not accidentally included.
 3. Commit the reviewed Phase 2 changes on the appropriate branch.
 
-**Current status: Core implementation, experiments, analysis outputs, and automated tests complete; final audit and Git review pending.**
+**Current status: Core implementation, corrected energy accounting, experiments, analysis outputs, and automated tests complete; final audit and Git review pending.**

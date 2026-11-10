@@ -182,6 +182,7 @@ void
 ClusterHeadApp::CloseWindow()
 {
 
+    FinishWindowEnergyMeasurement();
     m_inWindow = false;
     m_c.windowListenTime += Simulator::Now().GetSeconds() - m_windowOpen;
 
