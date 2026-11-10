@@ -43,23 +43,6 @@ CalculateQuantile(std::vector<double> values, double quantile)
 }
 } // namespace
 
-// UavApp::UavApp(World* world,
-//                std::unique_ptr<RoutingPolicy> policy,
-//                Ptr<NormalRandomVariable> speed,
-//                Ptr<UniformRandomVariable> delay)
-//     : m_w(world),
-//       m_policy(std::move(policy)),
-//       m_speed(speed),
-//       m_delay(delay),
-//       m_promise(world->clusters.size(), -1.0)
-// {
-//     m_activePrimary.reserve(world->clusters.size());
-//     for (const auto& cluster : world->clusters)
-//     {
-//         m_activePrimary.push_back(cluster.primary);
-//     }
-// }
-
 UavApp::UavApp(World* world,
                std::unique_ptr<RoutingPolicy> policy,
                Ptr<NormalRandomVariable> speed,
@@ -69,6 +52,7 @@ UavApp::UavApp(World* world,
       m_speed(speed),
       m_delay(delay),
       m_promise(world->clusters.size(), -1.0),
+      m_lateWidth(world->clusters.size(), world->cfg.adaptiveLateMargin),
       m_lastContactBuffer(world->clusters.size(), 0.0),
       m_lastContactEnergy(world->clusters.size(), 0.0),
       m_lastContactTime(world->clusters.size(), -1.0),
@@ -113,11 +97,6 @@ UavApp::StartApplication()
     m_socket->SetAllowBroadcast(true);
     m_socket->SetRecvCallback(MakeCallback(&UavApp::Receive, this));
     CalculateNominalPeriod(m_mob->GetPosition());
-
-    if (m_policy->CommitsToOrder())
-    {
-        BuildTimetable(m_mob->GetPosition());
-    }
 
     m_period = PromisePeriod();
     m_uncontacted = static_cast<uint32_t>(m_w->clusters.size());
@@ -186,29 +165,7 @@ UavApp::Depart()
 
     const Vector currentPosition = m_mob->GetPosition();
 
-    // std::vector<ClusterBelief> beliefs(m_w->clusters.size());
 
-    // for (uint32_t i = 0; i < beliefs.size(); ++i)
-    // {
-    //     const double elapsed =
-    //         (m_lastContactTime[i] >= 0.0)
-    //             ? std::max(0.0, now - m_lastContactTime[i])
-    //             : 0.0;
-
-    //     beliefs[i].estimatedBuffer =
-    //         m_lastContactBuffer[i] + m_estimatedGenerationRate[i] * elapsed;
-
-    //     beliefs[i].estimatedGenerationRate = m_estimatedGenerationRate[i];
-    //     beliefs[i].residualEnergy = m_lastContactEnergy[i];
-    //     beliefs[i].timeSinceContact = elapsed;
-    //     beliefs[i].timeUntilPromise =
-    //         (m_promise[i] >= 0.0) ? m_promise[i] - now : -1.0;
-    //     beliefs[i].missedMeetings = m_missedMeetings[i];
-    //     beliefs[i].neverContacted = m_neverContacted[i];
-    // }
-
-
-    // Build the flat belief vector used as the Phase 3 observation interface.
     const std::vector<double> flatBeliefs = BuildBeliefVector();
     NS_ABORT_MSG_IF(flatBeliefs.size() != m_w->clusters.size() * 7, "Invalid UAV belief vector size");
     // Convert the flat vector into the structured representation
@@ -236,11 +193,11 @@ UavApp::Depart()
     uint32_t k = m_policy->Next(
         *m_w, beliefs,
         currentPosition.x, currentPosition.y,
-        currentCluster);
+        currentCluster,
+        0.5 * m_nominalPeriod);
 
     const Cluster& c = m_w->clusters[k];
 
-    // Keep the rest of your existing Depart() implementation unchanged.
 
     Vector from = m_mob->GetPosition();
     Vector to(c.meetX, c.meetY, cfg.uavAltitude);
@@ -248,12 +205,6 @@ UavApp::Depart()
     double v = std::max(cfg.uavMinSpeed, m_speed->GetValue());
     double flightTime = d / v;
 
-    // Independently decide whether this flight leg experiences an extra delay.
-
-    // if (m_delay->GetValue() < cfg.uavDelayProb)
-    // {
-    //     delay = cfg.uavDelayMin + m_delay->GetValue() * (cfg.uavDelayMax - cfg.uavDelayMin);
-    // }
     // Independently sample whether this leg is delayed.
     double delay = 0.0;
     const double delayEvent = m_delay->GetValue();
@@ -295,26 +246,15 @@ UavApp::Arrive()
 {
     const SimConfig& cfg = m_w->cfg;
     Cluster& c = m_w->clusters[m_visit.cluster];
-    // NS_LOG_UNCOND(
-    //     "ARRIVE CHECK: cluster=" << m_visit.cluster
-    //     << " promisedEta=" << m_visit.promisedEta
-    //     << " now=" << Simulator::Now().GetSeconds());
 
-    // Record positive lateness for the previous promise.
+
     if (m_visit.promisedEta >= 0.0)
     {
-        const double lateness = std::max(
-            0.0,
-            Simulator::Now().GetSeconds() - m_visit.promisedEta);
+        const double lateness = Simulator::Now().GetSeconds() - m_visit.promisedEta;
 
         const uint64_t arrivalsSincePromise =
             m_totalArrivals - m_arrivalsAtPromise[m_visit.cluster];
 
-        // const uint32_t stopsSincePromise =
-        //     static_cast<uint32_t>(
-        //         arrivalsSincePromise > 0 ? arrivalsSincePromise - 1 : 0);
-
-        //const uint32_t stopsSincePromise = static_cast<uint32_t>(arrivalsSincePromise > 0 ? arrivalsSincePromise - 1 : 0);
         const uint32_t stopsSincePromise = static_cast<uint32_t>(arrivalsSincePromise);
         m_latenessByStops[stopsSincePromise].push_back(lateness);
     }
@@ -324,7 +264,7 @@ UavApp::Arrive()
     m_contact = false;
     m_planSent = false;
     // Wait until the next valid listening window before polling.
-    double hold = HoldFor(m_visit.promisedEta, Simulator::Now().GetSeconds());
+    double hold = HoldFor(m_visit.promisedEta, Simulator::Now().GetSeconds(), m_lateWidth[m_visit.cluster]);
 
     if (hold > 0.0)
     {
@@ -418,7 +358,7 @@ UavApp::CalculateNominalPeriod(Vector depot)
             current.meetX - previous.meetX,
             current.meetY - previous.meetY);
     }
-    //const Cluster& first = m_w->clusters[order[0]];
+
     // Final leg: from the last cluster back to the first.
     const Cluster& last = m_w->clusters[order[K - 1]];
 
@@ -428,38 +368,6 @@ UavApp::CalculateNominalPeriod(Vector depot)
 
     // Nominal period = travel time + hover budget at every cluster.
     m_nominalPeriod = totalDistance / vNominal + K * cfg.hoverBudget;
-}
-
-void
-UavApp::BuildTimetable(Vector depot)
-{
-    const SimConfig& cfg = m_w->cfg;
-    const auto& order = m_w->tourOrder;
-    const size_t K = order.size();
-    const double vPlan = cfg.planSpeedFactor * cfg.uavSpeed;
-    const double surveyBudget = cfg.dutyPeriod + cfg.dutyListen; // CHs are in DISCOVERY on lap 0
-    auto meet = [&](size_t i) { return m_w->clusters[order[i]]; };
-    auto leg = [&](size_t i, size_t j) {
-        return std::hypot(meet(j).meetX - meet(i).meetX, meet(j).meetY - meet(i).meetY) / vPlan;
-    };
-
-    m_lap0.assign(K, 0.0);
-    m_offset.assign(K, 0.0);
-    m_lap0[0] = std::hypot(meet(0).meetX - depot.x, meet(0).meetY - depot.y) / vPlan;
-    for (size_t i = 1; i < K; ++i)
-    {
-        m_lap0[i] = m_lap0[i - 1] + surveyBudget + leg(i - 1, i);
-        m_offset[i] = m_offset[i - 1] + cfg.hoverBudget + leg(i - 1, i);
-    }
-    m_lap1Start = m_lap0[K - 1] + surveyBudget + leg(K - 1, 0);
-    m_period = m_offset[K - 1] + cfg.hoverBudget + leg(K - 1, 0);
-}
-
-double
-UavApp::Slot(uint32_t k, uint32_t lap) const
-{
-    size_t i = m_w->clusters[k].tourIndex;
-    return lap == 0 ? m_lap0[i] : m_lap1Start + (lap - 1) * m_period + m_offset[i];
 }
 
 // P: one tour lap with legs at planSpeedFactor * uavSpeed plus hoverBudget per stop (D7).
@@ -484,7 +392,7 @@ UavApp::PromisePeriod() const
 // tau + w + m * retryInterval for m = 1..maxMissedRetries and lasts retryListen. After the last
 // retry the CH is back in DISCOVERY and no hold is needed.
 double
-UavApp::HoldFor(double promised, double now) const
+UavApp::HoldFor(double promised, double now, double lateWidth) const
 {
     const SimConfig& cfg = m_w->cfg;
     if (promised < 0 || cfg.wakeMode != "scheduled")
@@ -495,7 +403,8 @@ UavApp::HoldFor(double promised, double now) const
     {
         return promised - cfg.wakeHalfWidth - now;
     }
-    double end = promised + cfg.wakeHalfWidth;
+
+    double end = promised + lateWidth;
     if (now <= end)
     {
         return 0;
@@ -567,7 +476,7 @@ UavApp::Receive(Ptr<Socket> socket)
 
             if (!m_neverContacted[m.cluster])
             {
-                //m_lastStopsSincePromise[m.cluster] = static_cast<uint32_t>(m_totalArrivals >= m_arrivalsAtPromise[m.cluster] ? m_totalArrivals - m_arrivalsAtPromise[m.cluster]: 0);
+
                 const uint64_t arrivalsSincePromise = m_totalArrivals - m_arrivalsAtPromise[m.cluster];
 
                 m_lastStopsSincePromise[m.cluster] = static_cast<uint32_t>(arrivalsSincePromise > 0 ? arrivalsSincePromise - 1 : 0);
@@ -577,8 +486,17 @@ UavApp::Receive(Ptr<Socket> socket)
             const double currentContactTime = m.contactTimeNs * 1e-9;
             const double currentBuffer = static_cast<double>(m.bufferAtContact);
 
-            if (!m_neverContacted[m.cluster])
+           if (m_neverContacted[m.cluster])
             {
+                // First contact: buffers start empty at simulation time zero.
+                if (currentContactTime > 0.0)
+                {
+                    m_estimatedGenerationRate[m.cluster] = currentBuffer / currentContactTime;
+                }
+            }
+            else
+            {
+                // Subsequent contacts: update the estimate using EWMA.
                 const double elapsed = currentContactTime - m_lastContactTime[m.cluster];
 
                 if (elapsed > 0.0)
@@ -586,7 +504,7 @@ UavApp::Receive(Ptr<Socket> socket)
                     const double observedRate = currentBuffer / elapsed;
                     constexpr double alpha = 0.3;
 
-                    m_estimatedGenerationRate[m.cluster] = alpha * observedRate +(1.0 - alpha) * m_estimatedGenerationRate[m.cluster];
+                    m_estimatedGenerationRate[m.cluster] = alpha * observedRate + (1.0 - alpha) * m_estimatedGenerationRate[m.cluster];
                 }
             }
 
@@ -594,26 +512,14 @@ UavApp::Receive(Ptr<Socket> socket)
             m_lastContactEnergy[m.cluster] = m.residualEnergy;
             m_lastContactTime[m.cluster] = currentContactTime;
             m_neverContacted[m.cluster] = false;
-
-            // m_planSent = true;
-            // if (m_w->cfg.wakeMode == "scheduled")
-            // {
-            //     // Promise the cluster's slot in the next lap of the committed timetable (D7).
-            //     double eta = Slot(m.cluster, c.visits);
-            //     m_promise[m.cluster] = eta;
-            //     Msg plan;
-            //     plan.type = MsgType::PLAN;
-            //     plan.cluster = m.cluster;
-            //     plan.timeNs = static_cast<int64_t>(eta * 1e9);
-            //     plan.halfWidthNs = static_cast<int64_t>(m_w->cfg.wakeHalfWidth * 1e9);
-            //     Address ch = InetSocketAddress(InetSocketAddress::ConvertFrom(from).GetIpv4(), CH_PORT);
-            //     m_socket->SendTo(MakePacket(plan), 0, ch);
-            // }
             m_planSent = true;
 
-            // Common promise rule for every routing policy:
-            // next expected contact = current contact time + nominal tour period.
-            const double eta = currentContactTime + m_nominalPeriod;
+            // Promise the next tour period, including extra time for uncontacted clusters.
+            const SimConfig& cfg = m_w->cfg;
+            double surveyExtra = std::max(0.0, 0.5 * cfg.dutyPeriod - cfg.hoverBudget);
+
+            double eta = Simulator::Now().GetSeconds() + END_GUARD + m_period + m_uncontacted * surveyExtra;
+
             m_promise[m.cluster] = eta;
             m_arrivalsAtPromise[m.cluster] = m_totalArrivals;
 
@@ -635,11 +541,7 @@ UavApp::Receive(Ptr<Socket> socket)
                 }
 
                 plan.lateWidthNs = static_cast<int64_t>(lateMargin * 1e9);
-                NS_LOG_UNCOND(
-                "ETA ADAPTIVE: cluster=" << m.cluster
-                << " stops=" << m_lastStopsSincePromise[m.cluster]
-                << " samples=" << (it != m_latenessByStops.end() ? it->second.size() : 0)
-                << " lateMargin=" << lateMargin);
+                m_lateWidth[m.cluster] = plan.lateWidthNs * 1e-9;
 
                 Address ch = InetSocketAddress(InetSocketAddress::ConvertFrom(from).GetIpv4(), CH_PORT);
 

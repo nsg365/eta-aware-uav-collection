@@ -42,15 +42,12 @@ class UavApp : public ns3::Application
     void EndHover();
     void Receive(ns3::Ptr<ns3::Socket> socket);
 
-    // Periodic timetable for a policy that commits to the tour order (D7).
-    void BuildTimetable(ns3::Vector depot);
+
     // Calculate the nominal reference-tour period [s], independent of routing policy.
     void CalculateNominalPeriod(ns3::Vector depot);
-    // Planned arrival time at cluster k in lap `lap` (0-based) [s].
-    double Slot(uint32_t k, uint32_t lap) const;
     // Promise period P (D7) and the hold at a meeting point (D8).
     double PromisePeriod() const;
-    double HoldFor(double promised, double now) const;
+    double HoldFor(double promised, double now, double lateWidth) const;
 
     World* m_w;
     std::unique_ptr<RoutingPolicy> m_policy;
@@ -64,6 +61,7 @@ class UavApp : public ns3::Application
     bool m_planSent = false;
     VisitRecord m_visit{};
     std::vector<double> m_promise; // per cluster, promised next arrival (-1 none)
+    std::vector<double> m_lateWidth; // adaptive late window sent in the PLAN
     std::vector<double> m_lastContactBuffer;
     std::vector<double> m_lastContactEnergy;
     std::vector<double> m_lastContactTime;
@@ -71,12 +69,10 @@ class UavApp : public ns3::Application
     std::vector<uint32_t> m_missedMeetings;
     std::vector<bool> m_neverContacted;
     std::vector<uint32_t> m_activePrimary; // active CH sensor ID per cluster
-    std::vector<double> m_lap0, m_offset; // per tour position [s]
     std::vector<uint64_t> m_arrivalsAtPromise;
     std::vector<uint32_t> m_lastStopsSincePromise;
     std::map<uint32_t, std::vector<double>> m_latenessByStops;
     uint64_t m_totalArrivals = 0;
-    double m_lap1Start = 0; // [s]
     double m_period = 0; // promise horizon [s]
     double m_nominalPeriod = 0.0; // common reference-tour period for all policies [s]
     std::vector<bool> m_contacted; // per cluster, contacted at least once

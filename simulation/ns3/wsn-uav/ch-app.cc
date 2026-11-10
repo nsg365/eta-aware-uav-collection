@@ -150,23 +150,6 @@ ClusterHeadApp::DiscoverySleep()
                                        this);
 }
 
-// ---------------------------------------------------------------- scheduled windows
-
-// void
-// ClusterHeadApp::OpenWindow(double closeAt)
-// {
-//     Wake();
-//     m_inWindow = true;
-//     m_c.windowsOpened++;
-//     m_windowOpen = Simulator::Now().GetSeconds();
-//     NS_LOG_UNCOND(
-//         "WINDOW OPEN: cluster=" << m_c.id
-//         << " time=" << m_windowOpen
-//         << " closeAt=" << closeAt);
-//     double in = std::max(0.0, closeAt - m_windowOpen);
-//     m_windowClose = Simulator::Schedule(Seconds(in), &ClusterHeadApp::CloseWindow, this);
-// }
-
 void
 ClusterHeadApp::OpenWindow(double closeAt)
 {
@@ -187,10 +170,6 @@ ClusterHeadApp::OpenWindow(double closeAt)
     }
     m_windowOpen = Simulator::Now().GetSeconds();
 
-    NS_LOG_UNCOND(
-        "WINDOW OPEN: cluster=" << m_c.id
-        << " time=" << m_windowOpen
-        << " closeAt=" << closeAt);
 
     double in = std::max(0.0, closeAt - m_windowOpen);
     m_windowClose = Simulator::Schedule(
@@ -203,11 +182,6 @@ void
 ClusterHeadApp::CloseWindow()
 {
 
-    FinishWindowEnergyMeasurement();
-    NS_LOG_UNCOND("WINDOW CLOSE: cluster=" << m_c.id
-        << " time=" << Simulator::Now().GetSeconds()
-        << " openedAt=" << m_windowOpen
-        << " awake=" << m_wantAwake);
     m_inWindow = false;
     m_c.windowListenTime += Simulator::Now().GetSeconds() - m_windowOpen;
 
@@ -345,13 +319,8 @@ ClusterHeadApp::Receive(Ptr<Socket> socket)
             m_busy = false;
             double now = Simulator::Now().GetSeconds();
             double eta = m.timeNs * 1e-9;
-            //double w = m.halfWidthNs * 1e-9;
             double earlyWidth = m.halfWidthNs * 1e-9;
             double lateWidth = m.lateWidthNs * 1e-9;
-            NS_LOG_UNCOND(
-            "CH ADAPTIVE: cluster=" << m_c.id
-            << " lateWidth=" << lateWidth
-            << " earlyWidth=" << earlyWidth);
 
             // Apply this CH's fixed clock offset to its interpretation of the ETA.
             double adjustedEta = eta - m_clockOffset;
@@ -359,19 +328,6 @@ ClusterHeadApp::Receive(Ptr<Socket> socket)
 
             m_c.windowsScheduled++;
 
-            // if (adjustedEta - w > now)
-            // {
-            //     Sleep();
-            //     m_cycleEvent =
-            //         Simulator::Schedule(Seconds(adjustedEta - w - now),
-            //                         &ClusterHeadApp::OpenWindow,
-            //                         this,
-            //                         adjustedEta + w);
-            // }
-            // else
-            // {
-            //     OpenWindow(adjustedEta + w);
-            // }
             double windowOpen = adjustedEta - earlyWidth;
             double windowClose = adjustedEta + lateWidth;
 

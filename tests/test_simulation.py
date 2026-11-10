@@ -79,8 +79,7 @@ def test_always_on_wifi_energy_matches_idle_power(topology, tmp_path):
 
 
 def test_scheduled_mode_sleeps_and_meets(topology, tmp_path):
-    # m = run(topology, tmp_path, wakeMode="scheduled")
-    m = run( topology, tmp_path, wakeMode="scheduled", adaptiveLateMargin=40.0,)
+    m = run( topology, tmp_path, wakeMode="scheduled")
     assert m["wake"]["meeting_success_rate"] > 0.9
     assert m["wake"]["ch_wifi_awake_fraction"] < 0.1
 

@@ -36,7 +36,8 @@ class RoutingPolicy
                           const std::vector<ClusterBelief>& beliefs,
                           double currentX,
                           double currentY,
-                          uint32_t currentCluster) = 0;
+                          uint32_t currentCluster,
+                          double halfLapThreshold) = 0;
 
     virtual bool CommitsToOrder() const = 0;
 
@@ -104,7 +105,8 @@ class TourPolicy : public RoutingPolicy
                   const std::vector<ClusterBelief>&,
                   double,
                   double,
-                  uint32_t) override
+                  uint32_t,
+                  double) override
     {
         return w.tourOrder[m_i++ % w.tourOrder.size()];
     }
@@ -118,55 +120,73 @@ class TourPolicy : public RoutingPolicy
     size_t m_i = 0;
 };
 
-// Select the nearest cluster, excluding the current cluster.
-// If the nearest choice would cause A-B-A ping-pong, prefer the next
-// nearest alternative when one exists.
+// Select the nearest feasible cluster, falling back to the
+// longest-unvisited cluster when none is feasible.
 class NearestFeasiblePolicy : public RoutingPolicy
 {
   public:
     uint32_t Next(const World& w,
-                  const std::vector<ClusterBelief>&,
-                  double currentX,
-                  double currentY,
-                  uint32_t currentCluster) override
+              const std::vector<ClusterBelief>& beliefs,
+              double currentX,
+              double currentY,
+              uint32_t currentCluster,
+              double halfLapThreshold) override
+{
+    const uint32_t unexplored = SelectUncontacted(w, beliefs, currentX, currentY, currentCluster);
+    if (unexplored != UINT32_MAX)
     {
-        uint32_t best = UINT32_MAX;
-        uint32_t bestAlternative = UINT32_MAX;
-        double bestDistance = std::numeric_limits<double>::max();
-        double alternativeDistance = std::numeric_limits<double>::max();
+        Remember(unexplored);
+        return unexplored;
+    }
+    uint32_t bestFeasible = UINT32_MAX;
+    uint32_t longestUnvisited = UINT32_MAX;
 
-        for (const Cluster& c : w.clusters)
+    double bestDistance = std::numeric_limits<double>::max();
+    double longestContactAge = -1.0;
+    double fallbackDistance = std::numeric_limits<double>::max();
+
+    for (const Cluster& c : w.clusters)
+    {
+        if (c.id == currentCluster)
+            continue;
+
+        const ClusterBelief& belief = beliefs.at(c.id);
+
+        const double dx = c.meetX - currentX;
+        const double dy = c.meetY - currentY;
+        const double distance = std::hypot(dx, dy);
+
+        // Never-contacted clusters are also feasible.
+        const bool feasible =
+            belief.neverContacted ||
+            belief.timeSinceContact >= halfLapThreshold;
+
+        if (feasible && distance < bestDistance)
         {
-            if (c.id == currentCluster)
-                continue;
-
-            const double dx = c.meetX - currentX;
-            const double dy = c.meetY - currentY;
-            const double distance = std::hypot(dx, dy);
-
-            if (distance < bestDistance)
-            {
-                bestDistance = distance;
-                best = c.id;
-            }
-
-            if (!IsPingPongCandidate(c.id) && distance < alternativeDistance)
-            {
-                alternativeDistance = distance;
-                bestAlternative = c.id;
-            }
+            bestDistance = distance;
+            bestFeasible = c.id;
         }
 
-        const uint32_t selected =
-            (bestAlternative != UINT32_MAX) ? bestAlternative : best;
-
-        NS_ABORT_MSG_IF(selected == UINT32_MAX,
-                        "Nearest-feasible policy found no cluster other than current cluster");
-
-        Remember(selected);
-        return selected;
+        // Keep the longest-unvisited cluster as a fallback.
+        if (belief.timeSinceContact > longestContactAge ||
+            (belief.timeSinceContact == longestContactAge &&
+             distance < fallbackDistance))
+        {
+            longestContactAge = belief.timeSinceContact;
+            fallbackDistance = distance;
+            longestUnvisited = c.id;
+        }
     }
 
+    const uint32_t selected =
+        (bestFeasible != UINT32_MAX) ? bestFeasible : longestUnvisited;
+
+    NS_ABORT_MSG_IF(selected == UINT32_MAX,
+                    "Nearest-feasible policy found no cluster other than current cluster");
+
+    Remember(selected);
+    return selected;
+}
     bool CommitsToOrder() const override
     {
         return false;
@@ -181,7 +201,8 @@ class DataGreedyPolicy : public RoutingPolicy
                   const std::vector<ClusterBelief>& beliefs,
                   double currentX,
                   double currentY,
-                  uint32_t currentCluster) override
+                  uint32_t currentCluster,
+                  double halfLapThreshold) override
     {
         const uint32_t unexplored =
             SelectUncontacted(w, beliefs, currentX, currentY, currentCluster);
@@ -241,7 +262,8 @@ class EnergyDataPolicy : public RoutingPolicy
                   const std::vector<ClusterBelief>& beliefs,
                   double currentX,
                   double currentY,
-                  uint32_t currentCluster) override
+                  uint32_t currentCluster,
+                  double halfLapThreshold) override
     {
         const uint32_t unexplored = SelectUncontacted(w, beliefs, currentX, currentY, currentCluster);
 
