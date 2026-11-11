@@ -63,15 +63,21 @@ def run_one(job: dict) -> dict:
     out = Path(job["out"])
     out.mkdir(parents=True, exist_ok=True)
     (out / "run_config.json").write_text(json.dumps(job, indent=2))
-    cmd = [str(ns3_binary())] + sim_args(job["simulation"])
-    proc = subprocess.run(cmd, capture_output=True, text=True, cwd=REPO)
-    (out / "stdout.log").write_text(proc.stdout + proc.stderr)
-    if proc.returncode != 0:
-        raise RuntimeError(f"simulation failed ({proc.returncode}) in {out}; see stdout.log:\n"
-                           + (proc.stdout + proc.stderr)[-2000:])
+    extra = {}
+    if job["simulation"].get("routing") == "ppo":
+        # A trained Phase 3 policy drives the UAV through routing/env.py.
+        from routing.evaluate import run_ppo
+        extra = {"ppo": run_ppo(job["simulation"]["model"], job["simulation"])}
+    else:
+        cmd = [str(ns3_binary())] + sim_args(job["simulation"])
+        proc = subprocess.run(cmd, capture_output=True, text=True, cwd=REPO)
+        (out / "stdout.log").write_text(proc.stdout + proc.stderr)
+        if proc.returncode != 0:
+            raise RuntimeError(f"simulation failed ({proc.returncode}) in {out}; see stdout.log:\n"
+                               + (proc.stdout + proc.stderr)[-2000:])
     metrics = json.loads((out / "metrics.json").read_text())
     return {"variant": job["variant"], "num_sensors_cfg": job["num_sensors"], "seed_cfg": job["seed"],
-            **flatten(metrics)}
+            **flatten(metrics), **flatten(extra)}
 
 
 def main() -> None:

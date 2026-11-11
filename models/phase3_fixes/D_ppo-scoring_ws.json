@@ -1,0 +1,78 @@
+{
+  "variant": "D",
+  "algo": "ppo",
+  "arch": "scoring",
+  "warm_start": {
+    "demo_transitions": 50334,
+    "tour_agreement": 0.9988
+  },
+  "num_sensors": 100,
+  "simulation": {
+    "simTime": 7200.0,
+    "wakeMode": "scheduled",
+    "uavDelayProb": 0.1,
+    "uavDelayMin": 10.0,
+    "uavDelayMax": 30.0,
+    "chFailureRate": 2.78e-05,
+    "adaptiveWindow": true,
+    "bufferCapacity": 250
+  },
+  "variant_simulation": {
+    "adaptiveWindow": true,
+    "bufferCapacity": 250
+  },
+  "env": {
+    "beta_c": 0.25,
+    "beta_d": 1.0,
+    "beta_e": 0.2,
+    "beta_m": 1.0,
+    "beta_r": 0.5,
+    "gamma": 0.99,
+    "promise_factors": [
+      0.75,
+      1.0,
+      1.5
+    ],
+    "risk_in_obs": true,
+    "shaping": true,
+    "t0": 15.0
+  },
+  "training": {
+    "t0": 15.0,
+    "bc_weight": 1.0,
+    "topology_config": "configs/phase3_hotspot.toml"
+  },
+  "train_seeds": [
+    101,
+    300
+  ],
+  "eval_seeds": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "hyperparameters": {
+    "learning_rate": 0.0003,
+    "n_steps": 512,
+    "batch_size": 256,
+    "n_epochs": 10,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "ent_coef": 0.01,
+    "net_arch": [
+      256,
+      256
+    ]
+  },
+  "timesteps": 300000,
+  "n_envs": 8,
+  "train_wall_s": 1180.6,
+  "git_commit": "15be8f9"
+}

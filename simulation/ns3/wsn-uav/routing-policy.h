@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
 #include <limits>
 #include <memory>
 #include <string>
@@ -25,6 +26,7 @@ struct ClusterBelief
     double timeUntilPromise = -1.0;     // seconds; -1 means no promise
     uint32_t missedMeetings = 0;
     bool neverContacted = true;
+    double lateQuantile = 0.0;          // seconds; ETA-lateness quantile if visited next
 };
 
 class RoutingPolicy
@@ -40,6 +42,18 @@ class RoutingPolicy
                           double halfLapThreshold) = 0;
 
     virtual bool CommitsToOrder() const = 0;
+
+    // Length of the promise made at the cluster returned by the last Next(), as a multiple of
+    // the promise period P (D7). Fixed policies keep P.
+    virtual double PromiseFactor() const
+    {
+        return 1.0;
+    }
+
+    // Called once when the UAV application stops (end of the mission horizon).
+    virtual void OnEpisodeEnd(const World&)
+    {
+    }
 
   protected:
     // Avoid A-B-A ping-pong when another cluster is available.
@@ -336,6 +350,157 @@ class EnergyDataPolicy : public RoutingPolicy
     }
 };
 
+// Decisions come from an outside process (Phase 3 PPO, routing/env.py) over two pipes.
+// The first K decisions are the fixed survey lap (proposal Algorithm 1); after that, at every
+// decision the policy writes one line
+//   D now current x y | totals | K x (cluster features)
+// and reads back "<cluster id> [promise factor]" (factor defaults to 1). At the end of the
+// mission it writes "E | totals".
+// Only UAV-side knowledge is sent: last-contact beliefs, promises, and static meeting points.
+// The totals are running counters used by the trainer for the reward, never as observations.
+class ExternalPolicy : public RoutingPolicy
+{
+  public:
+    ~ExternalPolicy() override
+    {
+        if (m_in)
+            std::fclose(m_in);
+        if (m_out)
+            std::fclose(m_out);
+    }
+
+    uint32_t Next(const World& w,
+                  const std::vector<ClusterBelief>& beliefs,
+                  double currentX,
+                  double currentY,
+                  uint32_t currentCluster,
+                  double) override
+    {
+        m_factor = 1.0;
+        if (m_decisions < w.tourOrder.size())
+        {
+            return w.tourOrder[m_decisions++];
+        }
+        m_decisions++;
+        Open(w);
+
+        std::fprintf(m_out,
+                     "D %.6f %d %.3f %.3f |",
+                     ns3::Simulator::Now().GetSeconds(),
+                     currentCluster == UINT32_MAX ? -1 : static_cast<int>(currentCluster),
+                     currentX,
+                     currentY);
+        WriteTotals(w);
+        std::fprintf(m_out, " |");
+        for (const Cluster& c : w.clusters)
+        {
+            const ClusterBelief& b = beliefs.at(c.id);
+            std::fprintf(m_out,
+                         " %.3f %.3f %.6g %.6g %.6g %.6g %.6g %u %d %.6g",
+                         c.meetX,
+                         c.meetY,
+                         b.estimatedBuffer,
+                         b.estimatedGenerationRate,
+                         b.residualEnergy,
+                         b.timeSinceContact,
+                         b.timeUntilPromise,
+                         b.missedMeetings,
+                         b.neverContacted ? 1 : 0,
+                         b.lateQuantile);
+        }
+        std::fprintf(m_out, "\n");
+        std::fflush(m_out);
+
+        char line[64];
+        NS_ABORT_MSG_IF(!std::fgets(line, sizeof(line), m_in), "external routing: bridge closed");
+        char* end = nullptr;
+        const long k = std::strtol(line, &end, 10);
+        NS_ABORT_MSG_IF(end == line || k < 0 || static_cast<size_t>(k) >= w.clusters.size() ||
+                            static_cast<uint32_t>(k) == currentCluster,
+                        "external routing: invalid decision '" << line << "'");
+        char* rest = end;
+        const double factor = std::strtod(end, &rest);
+        if (rest != end)
+        {
+            NS_ABORT_MSG_IF(!(factor > 0.0), "external routing: invalid promise factor '" << line << "'");
+            m_factor = factor;
+        }
+        return static_cast<uint32_t>(k);
+    }
+
+    void OnEpisodeEnd(const World& w) override
+    {
+        if (!m_out)
+        {
+            return; // the horizon ended during the survey lap
+        }
+        std::fprintf(m_out, "E |");
+        WriteTotals(w);
+        std::fprintf(m_out, "\n");
+        std::fflush(m_out);
+    }
+
+    bool CommitsToOrder() const override
+    {
+        return false;
+    }
+
+    double PromiseFactor() const override
+    {
+        return m_factor;
+    }
+
+  private:
+    void Open(const World& w)
+    {
+        if (m_out)
+        {
+            return;
+        }
+        NS_ABORT_MSG_IF(w.cfg.bridgeFdIn < 0 || w.cfg.bridgeFdOut < 0,
+                        "routing=external needs --bridgeFdIn and --bridgeFdOut");
+        m_in = fdopen(w.cfg.bridgeFdIn, "r");
+        m_out = fdopen(w.cfg.bridgeFdOut, "w");
+        NS_ABORT_MSG_IF(!m_in || !m_out, "external routing: cannot open bridge descriptors");
+    }
+
+    // delivered generated windows_missed retry_successes flight_s hover_s ch_wifi_J
+    void WriteTotals(const World& w) const
+    {
+        uint64_t delivered = 0, generated = 0;
+        uint32_t missed = 0, retried = 0;
+        for (const Cluster& c : w.clusters)
+        {
+            delivered += c.delivered;
+            generated += c.generated;
+            missed += c.windowsMissed;
+            retried += c.retrySuccesses;
+        }
+        double wifiJ = 0.0;
+        for (const Sensor& s : w.sensors)
+        {
+            if (s.wifiEnergy)
+            {
+                wifiJ += s.wifiEnergy->GetTotalEnergyConsumption();
+            }
+        }
+        std::fprintf(m_out,
+                     " %llu %llu %u %u %.6f %.6f %.6f",
+                     static_cast<unsigned long long>(delivered),
+                     static_cast<unsigned long long>(generated),
+                     missed,
+                     retried,
+                     w.uavFlightTime,
+                     w.uavHoverTime,
+                     wifiJ);
+    }
+
+    size_t m_decisions = 0;
+    double m_factor = 1.0;
+    std::FILE* m_in = nullptr;
+    std::FILE* m_out = nullptr;
+};
+
 inline std::unique_ptr<RoutingPolicy>
 MakeRoutingPolicy(const std::string& name)
 {
@@ -351,8 +516,11 @@ MakeRoutingPolicy(const std::string& name)
     if (name == "energy-data-score")
         return std::make_unique<EnergyDataPolicy>();
 
+    if (name == "external")
+        return std::make_unique<ExternalPolicy>();
+
     NS_FATAL_ERROR("Unknown routing policy '" << name
-                   << "' (available: tour, nearest-feasible, data-greedy, energy-data-score)");
+                   << "' (available: tour, nearest-feasible, data-greedy, energy-data-score, external)");
 }
 
 } // namespace wsnuav

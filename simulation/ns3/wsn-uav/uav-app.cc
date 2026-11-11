@@ -53,6 +53,7 @@ UavApp::UavApp(World* world,
       m_delay(delay),
       m_promise(world->clusters.size(), -1.0),
       m_lateWidth(world->clusters.size(), world->cfg.adaptiveLateMargin),
+      m_promiseFactor(world->clusters.size(), 1.0),
       m_lastContactBuffer(world->clusters.size(), 0.0),
       m_lastContactEnergy(world->clusters.size(), 0.0),
       m_lastContactTime(world->clusters.size(), -1.0),
@@ -114,6 +115,7 @@ UavApp::StopApplication()
     m_waitEvent.Cancel();
     m_capEvent.Cancel();
     m_endEvent.Cancel();
+    m_policy->OnEpisodeEnd(*m_w);
 }
 
 
@@ -185,6 +187,11 @@ UavApp::Depart()
         beliefs[i].timeUntilPromise = flatBeliefs[offset + 4];
         beliefs[i].missedMeetings = static_cast<uint32_t>(flatBeliefs[offset + 5]);
         beliefs[i].neverContacted = (flatBeliefs[offset + 6] > 0.5);
+        if (m_promise[i] >= 0.0)
+        {
+            beliefs[i].lateQuantile =
+                LatenessQuantile(static_cast<uint32_t>(m_totalArrivals - m_arrivalsAtPromise[i]));
+        }
     }
 
     const uint32_t currentCluster =
@@ -196,6 +203,7 @@ UavApp::Depart()
         currentCluster,
         0.5 * m_nominalPeriod);
 
+    m_promiseFactor[k] = m_policy->PromiseFactor();
     const Cluster& c = m_w->clusters[k];
 
 
@@ -387,6 +395,18 @@ UavApp::PromisePeriod() const
     return period;
 }
 
+double
+UavApp::LatenessQuantile(uint32_t stopsSincePromise) const
+{
+    double q = m_w->cfg.adaptiveLateMargin;
+    const auto it = m_latenessByStops.find(stopsSincePromise);
+    if (it != m_latenessByStops.end() && it->second.size() >= m_w->cfg.etaMinSamples)
+    {
+        q = CalculateQuantile(it->second, m_w->cfg.etaQuantile);
+    }
+    return std::max(0.0, q);
+}
+
 // How long to hold at the meeting point so the CH is listening (D8). An early UAV waits for the
 // promised window [tau - w, tau + w]; a late one waits for the next retry window, which opens at
 // tau + w + m * retryInterval for m = 1..maxMissedRetries and lasts retryListen. After the last
@@ -514,11 +534,13 @@ UavApp::Receive(Ptr<Socket> socket)
             m_neverContacted[m.cluster] = false;
             m_planSent = true;
 
-            // Promise the next tour period, including extra time for uncontacted clusters.
+            // Promise the next tour period (scaled by the policy's promise factor, 1 for fixed
+            // policies), including extra time for uncontacted clusters.
             const SimConfig& cfg = m_w->cfg;
             double surveyExtra = std::max(0.0, 0.5 * cfg.dutyPeriod - cfg.hoverBudget);
 
-            double eta = Simulator::Now().GetSeconds() + END_GUARD + m_period + m_uncontacted * surveyExtra;
+            double eta = Simulator::Now().GetSeconds() + END_GUARD +
+                         m_promiseFactor[m.cluster] * m_period + m_uncontacted * surveyExtra;
 
             m_promise[m.cluster] = eta;
             m_arrivalsAtPromise[m.cluster] = m_totalArrivals;
@@ -531,15 +553,9 @@ UavApp::Receive(Ptr<Socket> socket)
                 plan.cluster = m.cluster;
                 plan.timeNs = static_cast<int64_t>(eta * 1e9);
                 plan.halfWidthNs = static_cast<int64_t>(m_w->cfg.wakeHalfWidth * 1e9);
-                double lateMargin = m_w->cfg.adaptiveLateMargin;
-
-                const auto it = m_latenessByStops.find(m_lastStopsSincePromise[m.cluster]);
-
-                if (it != m_latenessByStops.end() && it->second.size() >= m_w->cfg.etaMinSamples)
-                {
-                    lateMargin = CalculateQuantile(it->second, m_w->cfg.etaQuantile);
-                }
-                lateMargin = std::max(0.0, lateMargin);
+                const double lateMargin = m_w->cfg.adaptiveWindow
+                                              ? LatenessQuantile(m_lastStopsSincePromise[m.cluster])
+                                              : m_w->cfg.wakeHalfWidth;
 
                 plan.lateWidthNs = static_cast<int64_t>(lateMargin * 1e9);
                 m_lateWidth[m.cluster] = plan.lateWidthNs * 1e-9;
