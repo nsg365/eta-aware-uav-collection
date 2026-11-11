@@ -47,6 +47,9 @@ clustering/       Phase 0: placement, DBSCAN, feasibility split, CH election, su
 simulation/ns3/   ns-3 program (symlinked into <ns-3>/scratch/wsn-uav)
 experiments/      grid runner (sizes x seeds x variants, common random numbers)
 analysis/         mean ± 95% t-CI aggregation
+routing/          Phase 3: ns-3 bridge env, PPO training and evaluation (docs/MDP.md)
+models/           Phase 3: trained policies, each with its settings (.json) and training curve
+demo/phase3/      Phase 3 demo page: mission replay and results (build.py)
 configs/          TOML configs
 tests/            pytest: clustering properties, data conservation, energy, determinism
 results/sample/   committed sample outputs; everything else in results/ is git-ignored

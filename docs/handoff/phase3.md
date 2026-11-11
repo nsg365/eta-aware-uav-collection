@@ -201,6 +201,12 @@ on top of the experiment's `[simulation]` table. Models are trained for 100 sens
     python3 -m routing.redteam models/phase3_fixes/C_ppo-scoring_ws.zip tour agreement
     python3 -m routing.redteam models/phase3_fixes/D_ppo-scoring_ws.zip tour agreement buffer:0.7 buffer:0.85 buffer:1.0 short:9
 
+**Demo page** (mission replay of held-out network 3 and the results above; needs the
+evaluation results first):
+
+    python3 demo/phase3/build.py
+    python3 -m http.server 8000 --directory demo/phase3     # then open http://localhost:8000
+
 ## 8. Models
 
 | File | What |
