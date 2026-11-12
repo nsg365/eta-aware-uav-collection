@@ -276,8 +276,8 @@ buffer or off-policy transition pre-filling is used."
 **Deviation.** Two steps use recorded tour decisions:
 1. before PPO starts, the policy is trained to copy the tour on 50 000 tour decisions and the
    critic to predict the tour's returns (warm start);
-2. during the first 200 000 PPO steps, a few behaviour-cloning steps on those decisions follow
-   each rollout, with a weight fading from 1 to 0.
+2. during PPO, a few behaviour-cloning steps on those decisions follow each rollout, with a
+   weight fading linearly from 1 to 0 over the whole training run.
 The PPO updates themselves remain on-policy, and there is still no replay buffer.
 **Why.** PPO from scratch reached only 59 % on-time meetings (PDR 0.926) in 300 000 decisions,
 against the tour's 92 % (docs/handoff/phase3.md §4). Without step 2, PPO drifted away from the

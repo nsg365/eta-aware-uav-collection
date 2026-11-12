@@ -71,22 +71,24 @@ def model_name(variant: str, algo: str, arch: str, warm: bool) -> str:
 
 # ---- warm start for PPO
 
-def tour_rollouts(vec, steps: int, gamma: float):
+def tour_rollouts(vec, steps: int, gamma: float, t0: float | None = None):
     """Follow the tour for at least `steps` decisions, in whole episodes. Returns observations,
-    masks, the tour's actions and the discounted returns that followed."""
+    masks, the tour's actions and the discounted returns that followed. With t0, each decision
+    is discounted by gamma ** (dt / t0), as PPO's semi-MDP buffer does (docs/MDP.md §1)."""
     obs = vec.reset()
     traj = [[] for _ in range(vec.num_envs)]
     O, M, A, G = [], [], [], []
     while len(A) < steps:
         masks = np.array(vec.env_method("action_masks"))
         act = np.array(vec.env_method("expert_action"))
-        obs2, rew, done, _ = vec.step(act)
+        obs2, rew, done, infos = vec.step(act)
         for i in range(vec.num_envs):
-            traj[i].append((obs[i], masks[i], act[i], rew[i]))
+            g = gamma ** (infos[i]["dt"] / t0) if t0 else gamma
+            traj[i].append((obs[i], masks[i], act[i], rew[i], g))
             if done[i]:
                 ret = 0.0
-                for o, m, a, r in reversed(traj[i]):
-                    ret = r + gamma * ret
+                for o, m, a, r, g in reversed(traj[i]):
+                    ret = r + g * ret
                     O.append(o); M.append(m); A.append(a); G.append(ret)
                 traj[i] = []
         obs = obs2
@@ -94,10 +96,11 @@ def tour_rollouts(vec, steps: int, gamma: float):
             torch.as_tensor(np.array(A)), torch.as_tensor(np.array(G), dtype=torch.float32))
 
 
-def behaviour_clone(model: MaskablePPO, settings: EnvSettings, n_envs: int, ws: dict):
+def behaviour_clone(model: MaskablePPO, settings: EnvSettings, n_envs: int, ws: dict,
+                    t0: float | None = None):
     demo = SubprocVecEnv([make_env(settings) for _ in range(n_envs)])
     demo.seed(10_000)
-    O, M, A, G = tour_rollouts(demo, ws.get("demo_steps", 50_000), model.gamma)
+    O, M, A, G = tour_rollouts(demo, ws.get("demo_steps", 50_000), model.gamma, t0)
     demo.close()
     policy = model.policy
     opt = torch.optim.Adam(policy.parameters(), lr=ws.get("lr", 1e-3))
@@ -150,7 +153,8 @@ def train(cfg: dict, variant: dict, algo: str, arch: str, warm: bool, timesteps:
         model = MaskablePPO(policy, vec, seed=0, verbose=0, policy_kwargs=kwargs, **ppo)
         if warm:
             extra["warm_start"], demos = behaviour_clone(model, settings, n_envs,
-                                                         cfg.get("warm_start", {}))
+                                                         cfg.get("warm_start", {}),
+                                                         variant.get("t0"))
             if variant.get("bc_weight"):
                 from routing.ppo_extras import DemoRegularizer
                 callbacks.append(DemoRegularizer(*demos, weight=variant["bc_weight"],

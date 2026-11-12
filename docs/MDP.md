@@ -151,7 +151,8 @@ Reference returns on training networks (A4P settings, 3 networks):
   - time-based discount (§1). With a fixed γ per decision, a policy that takes fewer, longer
     decisions sees more of the mission inside its discount horizon, which favours waiting;
   - after every PPO rollout, a few behaviour-cloning steps on tour decisions, with a weight that
-    fades from 1 to 0 over the first 200 000 steps (`bc_weight`);
+    fades linearly from 1 to 0 over the whole training run (`bc_weight`;
+    `bc_decay_steps` sets a shorter fade);
   - the shaping term F (§4).
 - **Logged:** reward curves (`models/<name>/<variant>_train.monitor.csv`), training wall time
   (`<variant>.json`), and inference time per decision (`ppo.json` in every evaluation run).

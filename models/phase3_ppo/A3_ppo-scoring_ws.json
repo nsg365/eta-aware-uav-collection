@@ -68,6 +68,6 @@
   },
   "timesteps": 300000,
   "n_envs": 8,
-  "train_wall_s": 1181.7,
-  "git_commit": "15be8f9"
+  "train_wall_s": 994.1,
+  "git_commit": "d36fbea"
 }

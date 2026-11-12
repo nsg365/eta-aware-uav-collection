@@ -15,7 +15,7 @@
   length) are trained and saved under `models/`.
 - **Main result:** on the 10 held-out networks, every PPO variant is statistically
   indistinguishable from the ETA-aware tour it is compared with (paired 95 % CIs all include 0).
-  PDR is 0.971–0.972 for all of them, against 0.598–0.907 for the other Phase 2 baselines.
+  PDR is 0.971–0.973 for all of them, against 0.598–0.907 for the other Phase 2 baselines.
 - **Why PPO does not beat the tour:** §6 gives the evidence that the tour is close to optimal in
   this simulator. Even a hand-written rule that detours to nearly full clusters loses badly to
   it, also on uneven (hotspot) traffic.
@@ -65,17 +65,18 @@ policy following the tour reproduces `routing=tour` exactly (`tests/test_rl_env.
 ## 4. Training
 
 - MaskablePPO (sb3-contrib 2.8.0), 8 parallel simulations, 300 000 decisions per variant,
-  about 20 minutes each on an M4 MacBook (A1 20.4, A2 24.7, A3 19.7, A4 18.2 min).
+  about 17–19 minutes each on an M4 MacBook (A1 18.7, A2 16.7, A3 16.6, A4 17.5 min).
 - Network seeds 101–300 for training, seeds 1–10 for evaluation.
 - **Setup used for all final variants** (MDP.md §6; each was needed, see the table below):
   1. per-cluster scoring network with one self-attention layer;
   2. warm start: copy the tour on 50 000 tour decisions (99.2–99.9 % agreement afterwards);
   3. time-based discount;
-  4. behaviour-cloning steps on tour decisions during PPO, fading out over 200 000 steps;
+  4. behaviour-cloning steps on tour decisions during PPO, fading out over the whole run;
   5. shaping on promises that can no longer be kept.
 
 **How we got there** (5 held-out networks, uniform traffic, A4P settings; tour: 92.4 % on-time,
-PDR 0.972, CH 91 J):
+PDR 0.972, CH 91 J). These runs used warm-start returns with a fixed 0.99 per decision; the
+final A1–A4 and C were retrained with the time-based discount (see §8):
 
 | Setup | On-time meetings | PDR | CH energy (J) | Note |
 |---|---|---|---|---|
@@ -101,31 +102,34 @@ Same stress as training (10 % of legs delayed by U(10, 30) s, one CH hardware fa
 | nearest feasible | 0.598 ± 0.075 | 0.867 ± 0.019 | 122 ± 13 | 0.056 |
 | data greedy | 0.907 ± 0.041 | 0.247 ± 0.059 | 238 ± 21 | 0.165 |
 | energy-data score | 0.878 ± 0.026 | 0.189 ± 0.041 | 230 ± 21 | 0.161 |
-| PPO A1 (model 5) | 0.972 ± 0.005 | 0.864 ± 0.040 | 92.8 ± 9.4 | 0.041 |
-| PPO A2 | 0.972 ± 0.007 | 0.832 ± 0.083 | 105 ± 22 | 0.047 |
-| PPO A3 | 0.972 ± 0.005 | 0.891 ± 0.031 | 108 ± 24 | 0.048 |
-| PPO A4 (model 6, ER-PPO) | 0.972 ± 0.005 | 0.900 ± 0.032 | 101 ± 17 | 0.045 |
-| PPO A4P | 0.971 ± 0.006 | 0.897 ± 0.036 | 115 ± 38 | 0.052 |
+| PPO A1 (model 5) | 0.972 ± 0.006 | 0.859 ± 0.041 | 92.6 ± 9.7 | 0.041 |
+| PPO A2 | 0.971 ± 0.008 | 0.815 ± 0.099 | 108 ± 28 | 0.048 |
+| PPO A3 | 0.972 ± 0.006 | 0.885 ± 0.059 | 113 ± 34 | 0.051 |
+| PPO A4 (model 6, ER-PPO) | 0.973 ± 0.005 | 0.885 ± 0.055 | 114 ± 40 | 0.052 |
+| PPO A4P | 0.971 ± 0.006 | 0.903 ± 0.025 | 100 ± 16 | 0.045 |
 
 **Paired difference from the matching tour** (same network, PPO minus tour; A1/A2 against the
 fixed-window tour, A3/A4/A4P against the adaptive one):
 
 | Variant | PDR (points) | On-time (points) | CH energy (J) |
 |---|---|---|---|
-| A1 | +0.02 ± 0.11 | +1.2 ± 1.8 | −4.0 ± 6.0 |
-| A2 | −0.01 ± 0.16 | −2.0 ± 5.7 | +8.2 ± 15.5 |
-| A3 | −0.07 ± 0.22 | −1.9 ± 2.1 | +12.5 ± 16.2 |
-| A4 | −0.03 ± 0.27 | −1.0 ± 1.8 | +5.7 ± 9.1 |
-| A4P | −0.18 ± 0.27 | −1.3 ± 2.3 | +20.0 ± 30.6 |
+| A1 | +0.00 ± 0.03 | +0.7 ± 2.3 | −4.2 ± 7.8 |
+| A2 | −0.09 ± 0.26 | −3.7 ± 6.0 | +10.8 ± 21.0 |
+| A3 | −0.04 ± 0.30 | −2.5 ± 4.7 | +17.6 ± 27.4 |
+| A4 | +0.02 ± 0.23 | −2.5 ± 4.4 | +19.2 ± 33.8 |
+| A4P | −0.14 ± 0.24 | −0.7 ± 0.8 | +5.0 ± 8.2 |
 
 **Reading:**
 - All PPO variants match the tour; none is significantly better or worse.
 - Against the best non-tour baseline (data greedy), every PPO variant has clearly higher PDR,
   about 3.6 × the on-time rate and less than half the CH energy.
 - The adaptive window helps, both for the tour (0.852 → 0.910 on-time) and for PPO
-  (A2 0.832 → A3 0.891). A4's risk term gives a further small, non-significant gain over A3.
+  (A2 0.815 → A3 0.885). A4's risk term gives no measurable gain over A3 (0.885 both); A4P
+  is the closest to the tour (0.903, CH 100 J).
+- CH energy varies more between PPO runs than PDR does: a retrain of the same setup moved A4
+  from 101 to 114 J and A4P from 115 to 100 J, always within the CIs above.
 - A4P never used the 0.75 × or 1.5 × promise on held-out networks.
-- Inference: 1.7–1.8 ms mean, 3.5 ms p95 per decision on CPU (`ppo.*` in `runs.csv`).
+- Inference: 1.5–1.6 ms mean, 2.8 ms p95 per decision on CPU (`ppo.*` in `runs.csv`).
 
 ## 6. Is the tour just hard for PPO, or hard to beat at all?
 
@@ -153,15 +157,15 @@ Three checks (`routing/redteam.py`, 5 held-out networks each):
 
    | Model | Same as tour | Most urgent promise instead | Skips one tour stop | Other |
    |---|---|---|---|---|
-   | A1 | 91.8 % | 1.8 % | 5.8 % | 0.7 % |
-   | A2 | 85.9 % | 2.9 % | 5.3 % | 6.0 % |
-   | A3 | 83.5 % | 7.1 % | 3.5 % | 5.9 % |
-   | A4 | 89.3 % | 4.3 % | 3.5 % | 3.0 % |
-   | A4P (C) | 80.8 % | | | |
+   | A1 | 84.8 % | 7.3 % | 5.6 % | 2.3 % |
+   | A2 | 84.9 % | 4.8 % | 4.6 % | 5.7 % |
+   | A3 | 77.8 % | 8.2 % | 5.7 % | 8.3 % |
+   | A4 | 79.8 % | 4.8 % | 7.0 % | 8.4 % |
+   | A4P (C) | 86.9 % | 4.9 % | 5.4 % | 2.8 % |
 
    So PPO learned "the tour, with corrections": typically going first to a cluster whose
    promise is about to run out. The corrections help on some networks (network 3: A4 delivers
-   0.975 vs the tour's 0.970) and cost on others, and they even out over 10 networks.
+   0.973 vs the tour's 0.970) and cost on others, and they even out over 10 networks.
    PPO without the warm start reached only 59 % on-time meetings (PDR 0.926) in the same
    training budget.
 
@@ -213,7 +217,14 @@ evaluation results first):
 |---|---|
 | `models/phase3_ppo/A1..A4_ppo-scoring_ws.zip` | final variants; `.json` = settings, `_train.monitor.csv` = reward per training episode |
 | `models/phase3_fixes/C_ppo-scoring_ws.zip` | A4P (used as `ppo_A4P` in `phase3_eval.toml`) |
-| `models/phase3_fixes/A, B, D_*` | red-team runs of §4 and §6 |
+| `models/phase3_fixes/A, B, D_*` | red-team runs of §4 and §6; trained before the warm-start fix below and not retrained |
+
+**Warm-start fix (12 November).** The warm start first computed the tour's returns with a fixed
+0.99 per decision, while PPO discounts 0.99 per 15 s. `tour_rollouts` now uses the same
+time-based discount (MDP.md §1). Tour decisions take 13.3 s on average, so this only lengthens
+the critic's starting horizon a little (about 113 instead of 100 decisions). A1–A4 and C were
+retrained and evaluated again; every result stayed within its earlier CI, and the tables above
+are the retrained numbers.
 
 ## 9. Limitations and open points
 
