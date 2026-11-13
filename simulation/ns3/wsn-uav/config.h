@@ -67,7 +67,9 @@ struct SimConfig
     double beaconInterval = 0.1;
     double contactWait = 12.0;  // max wait for a CH to answer at a meeting point [s]
     double maxHover = 120.0;    // max total hover per visit [s]
-    std::string routing = "tour"; // tour (fixed survey/TSP order); more in Phase 2
+    std::string routing = "tour"; // tour | nearest-feasible | data-greedy | energy-data-score | external
+    int bridgeFdIn = -1;  // external routing: file descriptor the decisions are read from
+    int bridgeFdOut = -1; // external routing: file descriptor the observations are written to
     double hoverBudget = 3.0;       // timetable hover allowance per stop after lap 0 [s]
     double planSpeedFactor = 0.9;   // timetable plans legs at this fraction of uavSpeed
 
@@ -77,6 +79,7 @@ struct SimConfig
     double dutyListen = 1.0;    // t_l: listen time per period [s]
     double wakeHalfWidth = 20.0; // fixed half-width w of a scheduled window [s]
     double adaptiveLateMargin = 20.0; // Empirical upper-quantile late-arrival margin [s]
+    bool adaptiveWindow = true;  // late width from the lateness quantile; false: wakeHalfWidth
     double etaQuantile = 0.95;   // Empirical lateness percentile (0.80–0.99)
     uint32_t etaMinSamples = 5;  // Minimum samples before adaptive estimation
     // Maximum absolute per-CH clock offset [s]
@@ -134,7 +137,11 @@ struct SimConfig
         cmd.AddValue("beaconInterval", "UAV POLL period while hovering [s]", beaconInterval);
         cmd.AddValue("contactWait", "Max wait for CH contact at a meeting point [s]", contactWait);
         cmd.AddValue("maxHover", "Max hover time per visit [s]", maxHover);
-        cmd.AddValue("routing", "UAV routing policy: tour", routing);
+        cmd.AddValue("routing",
+                     "UAV routing policy: tour|nearest-feasible|data-greedy|energy-data-score|external",
+                     routing);
+        cmd.AddValue("bridgeFdIn", "external routing: fd to read decisions from", bridgeFdIn);
+        cmd.AddValue("bridgeFdOut", "external routing: fd to write observations to", bridgeFdOut);
         cmd.AddValue("hoverBudget", "Timetable hover allowance per stop after lap 0 [s]", hoverBudget);
         cmd.AddValue("planSpeedFactor", "Timetable planning speed as a fraction of uavSpeed", planSpeedFactor);
         cmd.AddValue("wakeMode", "CH Wi-Fi wake mode: always_on|duty_cycle|scheduled", wakeMode);
@@ -142,6 +149,8 @@ struct SimConfig
         cmd.AddValue("dutyListen", "Listen time per duty period t_l [s]", dutyListen);
         cmd.AddValue("wakeHalfWidth", "Fixed scheduled wake-window half-width w [s]", wakeHalfWidth);
         cmd.AddValue("adaptiveLateMargin", "Adaptive late-arrival wake margin [s]", adaptiveLateMargin);
+        cmd.AddValue("adaptiveWindow", "Late window from the lateness quantile (else wakeHalfWidth)",
+                     adaptiveWindow);
         cmd.AddValue("etaQuantile", "Empirical lateness percentile (0.80–0.99)", etaQuantile);
         cmd.AddValue("etaMinSamples", "Minimum observations for adaptive ETA margin", etaMinSamples);
         cmd.AddValue("wDrift", "Maximum absolute per-CH clock offset [s]", wDrift);

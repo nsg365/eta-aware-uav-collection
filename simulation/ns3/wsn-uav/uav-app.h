@@ -48,6 +48,8 @@ class UavApp : public ns3::Application
     // Promise period P (D7) and the hold at a meeting point (D8).
     double PromisePeriod() const;
     double HoldFor(double promised, double now, double lateWidth) const;
+    // Empirical ETA-lateness quantile for arrivals this many stops after the promise [s, >= 0].
+    double LatenessQuantile(uint32_t stopsSincePromise) const;
 
     World* m_w;
     std::unique_ptr<RoutingPolicy> m_policy;
@@ -62,6 +64,7 @@ class UavApp : public ns3::Application
     VisitRecord m_visit{};
     std::vector<double> m_promise; // per cluster, promised next arrival (-1 none)
     std::vector<double> m_lateWidth; // adaptive late window sent in the PLAN
+    std::vector<double> m_promiseFactor; // promise length at the next contact, multiple of P
     std::vector<double> m_lastContactBuffer;
     std::vector<double> m_lastContactEnergy;
     std::vector<double> m_lastContactTime;

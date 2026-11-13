@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light} body{margin:0;font:14px system-ui,sans-serif} img{max-width:100%} [hidden]{display:none!important}</style>
+<title>ER-PPO Mission Replay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: one reading column; the replay breaks out to three side-by-side survey maps. */
+:root {
+  --bg: #f2f4f6;
+  --panel: #ffffff;
+  --fg: #16212c;
+  --muted: #5a6775;
+  --rule: #d6dde4;
+  --field: #e8edf1;
+  --tour: #2e7a57;
+  --ppo: #1d64c8;
+  --greedy: #b8531c;
+  --other: #8a96a3;
+  --font-display: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11171d; --panel: #18212a; --fg: #e3e9ee; --muted: #93a1ae; --rule: #2a3642;
+    --field: #1d2731; --tour: #4fb184; --ppo: #5c9cf0; --greedy: #e58149; --other: #74828f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11171d; --panel: #18212a; --fg: #e3e9ee; --muted: #93a1ae; --rule: #2a3642;
+  --field: #1d2731; --tour: #4fb184; --ppo: #5c9cf0; --greedy: #e58149; --other: #74828f;
+  color-scheme: dark;
+}
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px;
+  line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+main { max-width: 1120px; margin: 0 auto; padding-block: 40px 72px; display: grid; gap: 56px; }
+.col { max-width: 720px; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: clamp(2rem, 5vw, 2.9rem); letter-spacing: -0.01em; }
+h2 { font-size: 1.6rem; }
+h3 { font-size: 1.1rem; }
+p { margin: 0; }
+.eyebrow { font-family: var(--font-data); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.lede { font-size: 1.15rem; color: var(--muted); max-width: 64ch; }
+section { display: grid; gap: 18px; }
+.stack { display: grid; gap: 12px; }
+header { display: grid; gap: 14px; }
+.verdict { display: flex; flex-wrap: wrap; gap: 10px 28px; font-family: var(--font-data); font-size: 0.85rem; color: var(--muted); }
+.verdict b { color: var(--fg); font-weight: 500; }
+
+/* replay */
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
+button, select { font: 500 0.9rem var(--font-body); color: var(--fg); background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 7px 14px; cursor: pointer; }
+button.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); min-width: 84px; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--ppo); outline-offset: 2px; }
+input[type=range] { flex: 1 1 220px; min-width: 0; accent-color: var(--ppo); }
+.clock { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-size: 0.95rem; min-width: 11ch; }
+.maps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 860px) { .maps { grid-template-columns: minmax(0, 1fr); } }
+.map { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+.map-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 7px; vertical-align: 0; }
+.map canvas { width: 100%; aspect-ratio: 1; max-width: 100%; display: block; border-radius: 4px; }
+.live { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.live div { display: grid; }
+.live span { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.live b { font-weight: 500; font-size: 1rem; }
+.final { font-size: 0.85rem; color: var(--muted); border-top: 1px solid var(--rule); padding-top: 8px; }
+.final b { color: var(--fg); font-weight: 600; }
+.note { font-size: 0.9rem; color: var(--muted); max-width: 80ch; }
+
+/* charts */
+.charts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+@media (max-width: 860px) { .charts { grid-template-columns: minmax(0, 1fr); } }
+.chart { display: grid; gap: 6px; min-width: 0; }
+.chart svg { width: 100%; height: auto; overflow: visible; }
+.chart svg text { font-family: var(--font-data); font-size: 11px; fill: var(--muted); }
+.chart svg text.lab { fill: var(--fg); font-family: var(--font-body); font-size: 12px; }
+
+/* tables */
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+th, td { text-align: left; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-family: var(--font-data); font-size: 0.72rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+td.n { font-family: var(--font-data); font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.hl td { font-weight: 600; }
+
+ol.steps { margin: 0; padding-left: 1.3em; display: grid; gap: 10px; }
+ol.steps li::marker { font-family: var(--font-data); color: var(--muted); }
+
+/* script */
+.script { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 22px 24px; display: grid; gap: 16px; }
+.beat { display: grid; grid-template-columns: 9ch minmax(0, 1fr); gap: 4px 16px; }
+@media (max-width: 560px) { .beat { grid-template-columns: minmax(0, 1fr); } }
+.beat .t { font-family: var(--font-data); font-size: 0.8rem; color: var(--muted); padding-top: 3px; }
+.beat p { max-width: 68ch; }
+.beat em { color: var(--muted); }
+pre { margin: 0; font-family: var(--font-data); font-size: 0.85rem; background: var(--field); border-radius: 6px; padding: 12px 14px; overflow-x: auto; }
+.cmd { display: grid; gap: 6px; }
+.cmd-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.cmd-head button { padding: 4px 10px; font-size: 0.8rem; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+</head>
+<body>
+<main>
+  <header class="col">
+    <p class="eyebrow">MLOWN course project · Phase 3 · Nihar</p>
+    <h1>Learning where the drone flies next</h1>
+    <p class="lede">A UAV collects sensor data from cluster heads that only wake up when it promises to arrive. In Phase 3 a PPO agent learned the UAV's next stop, inside the ns-3 simulation. Below is one real two-hour mission on a network the agent never saw in training.</p>
+    <div class="verdict">
+      <span>PPO vs ETA-aware tour: <b>no significant difference</b></span>
+      <span>vs best other baseline: <b>+6.5 pts PDR, 3.6× on-time</b></span>
+      <span>decision time: <b>1.5 ms</b></span>
+    </div>
+  </header>
+
+  <section aria-labelledby="replay-h">
+    <div class="stack col">
+      <h2 id="replay-h">Mission replay</h2>
+      <p class="note">Held-out network 3: 100 sensors, 31 clusters, 500 m × 500 m. Same traffic, delays and failures for all three policies. Rings are meeting points, dots are sensors, the triangle is the UAV. Data counts when a visit ends.</p>
+    </div>
+    <div class="controls">
+      <button id="play" class="primary" type="button">Play</button>
+      <label for="speed" class="eyebrow">Speed</label>
+      <select id="speed">
+        <option value="60">60×</option>
+        <option value="120" selected>120×</option>
+        <option value="300">300×</option>
+      </select>
+      <input id="scrub" type="range" min="0" max="7200" step="1" value="2400" aria-label="Mission time">
+      <span class="clock" id="clock">40:00 / 2:00:00</span>
+    </div>
+    <div class="maps" id="maps"></div>
+  </section>
+
+  <section aria-labelledby="res-h">
+    <div class="stack col">
+      <h2 id="res-h">Results on 10 held-out networks</h2>
+      <p class="note">Mean with 95 % confidence interval over network seeds 1–10. Training used seeds 101–300. Stress: 10 % of flight legs delayed by 10–30 s, random cluster-head failures.</p>
+    </div>
+    <div class="charts" id="charts"></div>
+    <p class="note">Compared network by network with the matching tour, every PPO variant's difference in PDR, on-time rate and cluster-head energy has a 95 % interval that includes zero.</p>
+  </section>
+
+  <section aria-labelledby="built-h" class="col">
+    <h2 id="built-h">What Phase 3 built</h2>
+    <ol class="steps">
+      <li><b>A bridge between ns-3 and Python.</b> The simulator pauses at every decision, sends what the UAV knows over a pipe, and waits for the next cluster. A new <code>external</code> routing policy in C++.</li>
+      <li><b>The learning problem.</b> 13 features per cluster, all from the UAV's own records: last reported buffer and energy, promise slack, missed meetings, lateness estimate. No future information, checked by a test.</li>
+      <li><b>The reward.</b> Data delivered, minus UAV energy, broken promises, cluster-head listening energy, and (for ER-PPO) the risk of arriving late.</li>
+      <li><b>The agent.</b> MaskablePPO with a per-cluster scoring network and self-attention, warm-started by copying the tour, then trained for 300 000 decisions (about 20 minutes per variant).</li>
+      <li><b>The ablation.</b> A1 plain PPO, A2 adds the lateness estimate, A3 adds adaptive wake windows, A4 adds the risk term (full ER-PPO).</li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="fix-h">
+    <div class="stack col">
+      <h2 id="fix-h">Getting PPO to work</h2>
+      <p class="note">Five held-out networks, uniform traffic. The tour scores 92.4 % on-time, PDR 0.972, 91 J.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Change</th><th>On-time</th><th>PDR</th><th>CH energy</th><th>What happened</th></tr></thead>
+        <tbody>
+          <tr><td>First reward, no cluster-head energy term</td><td class="n">14–62 %</td><td class="n">0.88–0.91</td><td class="n">200–300 J</td><td>Every learner hovered and relied on retry listening</td></tr>
+          <tr><td>+ cluster-head energy, tour warm start</td><td class="n">82.9 %</td><td class="n">0.952</td><td class="n">124 J</td><td>Drifted toward fewer, longer decisions</td></tr>
+          <tr><td>+ discount per 15 s of mission time</td><td class="n">84.8 %</td><td class="n">0.967</td><td class="n">120 J</td><td>Drift stopped</td></tr>
+          <tr><td>+ tour imitation that fades during training</td><td class="n">87.0 %</td><td class="n">0.967</td><td class="n">162 J</td><td></td></tr>
+          <tr class="hl"><td>+ early penalty on promises that can no longer be kept</td><td class="n">90.1 %</td><td class="n">0.969</td><td class="n">131 J</td><td>Final setup</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="why-h">
+    <div class="stack col">
+      <h2 id="why-h">Why PPO matches the tour instead of beating it</h2>
+      <p class="note">Tested on 5 held-out hotspot networks with small buffers, where the tour loses 8.9 % of data to overflow. If any policy could beat the tour, it would be here.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Policy</th><th>PDR</th><th>Overflow</th><th>On-time</th><th>CH energy</th></tr></thead>
+        <tbody>
+          <tr><td>Tour</td><td class="n">0.896</td><td class="n">8.9 %</td><td class="n">95 %</td><td class="n">103 J</td></tr>
+          <tr class="hl"><td>PPO trained on these networks</td><td class="n">0.896</td><td class="n">8.9 %</td><td class="n">95 %</td><td class="n">103 J</td></tr>
+          <tr><td>Rule: detour to clusters ≥ 70 % full</td><td class="n">0.716</td><td class="n">25.7 %</td><td class="n">53 %</td><td class="n">287 J</td></tr>
+          <tr><td>Rule: shorter promises at busy clusters</td><td class="n">0.818</td><td class="n">16.1 %</td><td class="n">71 %</td><td class="n">242 J</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note col">PPO chose the tour's next stop at 100 % of decisions. Hand-written detours fly 279 m per visit against the tour's 129 m, and every skipped cluster misses the window it was promised. Under promise-based wake-up, changing the visiting order costs more than it gains, so the tour is close to optimal here.</p>
+  </section>
+
+  <section aria-labelledby="script-h">
+    <div class="stack col">
+      <h2 id="script-h">Talk script</h2>
+      <p class="note">About four minutes. Start the replay before you begin.</p>
+    </div>
+    <div class="script">
+      <div class="beat"><span class="t">0:00</span><p>Phase 3 is the reinforcement learning part. The question is: at every stop, which cluster should the UAV fly to next? I connected ns-3 to Python so that the simulator pauses at each decision and a PPO agent picks the next cluster.</p></div>
+      <div class="beat"><span class="t">0:40</span><p>The agent only sees what the UAV itself knows: the last buffer and energy each cluster head reported, how much slack is left on each promise, past missed meetings and its own lateness record. Nothing from the future. There is a test that checks this.</p></div>
+      <div class="beat"><span class="t">1:10</span><p><em>Point at the replay.</em> This is one two-hour mission on a network the agent never saw. Left is the ETA-aware tour, middle is ER-PPO, right is the data-greedy baseline from Phase 2. PPO and the tour both reach about 97 % delivery with about 90 % of meetings on time. Data-greedy chases full buffers across the map, keeps only 16 % of its promised meetings, and cluster heads burn more than twice the energy listening for it.</p></div>
+      <div class="beat"><span class="t">2:00</span><p>Getting here took several fixes. With the first reward every agent learned to hover and rely on the cluster heads' retry listening, so I added cluster-head energy to the reward. Then three training fixes: a discount based on mission time instead of per decision, imitation of the tour that fades out, and an early penalty on promises that can no longer be kept. On-time meetings went from 83 to 90 %.</p></div>
+      <div class="beat"><span class="t">2:50</span><p>On ten held-out networks, all four ablation variants match the tour. The differences have confidence intervals that include zero. The adaptive wake window gives the clearest gain, and the risk term adds a little more.</p></div>
+      <div class="beat"><span class="t">3:20</span><p>So why doesn't PPO beat the tour? I tested that directly. Even on uneven traffic where the tour loses 9 % of data to overflow, PPO converges to exactly the tour, and hand-written detour rules lose badly, because every detour breaks promises to the clusters it skips. With promise-based wake-up the tour is close to optimal, and PPO learning to match it is the correct result. All of this is reproducible with one command for Phase 4.</p></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="live-h" class="col">
+    <h2 id="live-h">Live demo in the terminal</h2>
+    <p class="note">From the repository folder. Each runs real ns-3 missions on held-out networks.</p>
+    <div class="cmd">
+      <div class="cmd-head"><span>One mission per policy on network 3, PPO and tour side by side (about 10 s)</span><button type="button" data-copy="c1">Copy</button></div>
+      <pre id="c1">python3 -m routing.redteam models/phase3_ppo/A4_ppo-scoring_ws.zip tour agreement --seeds 3</pre>
+    </div>
+    <div class="cmd">
+      <div class="cmd-head"><span>Full evaluation: 10 policies × 10 networks with confidence intervals (about 1 min)</span><button type="button" data-copy="c2">Copy</button></div>
+      <pre id="c2">python3 -m experiments.run_experiment configs/phase3_eval.toml -j 8
+python3 -m analysis.aggregate results/phase3_eval/runs.csv</pre>
+    </div>
+  </section>
+</main>
+
+<script>
+const DATA = __DATA__;
+const POLICIES = [
+  { key: "tour_adaptive", name: "ETA-aware tour", color: "--tour" },
+  { key: "ppo_A4", name: "ER-PPO (A4)", color: "--ppo" },
+  { key: "data_greedy", name: "Data greedy", color: "--greedy" },
+];
+const T_END = 7200;
+const css = () => getComputedStyle(document.documentElement);
+let colors = {};
+function readColors() {
+  const c = css();
+  for (const k of ["--fg", "--muted", "--rule", "--field", "--panel", "--tour", "--ppo", "--greedy", "--other"]) colors[k] = c.getPropertyValue(k).trim();
+}
+readColors();
+
+// per policy: arrays for fast lookup
+const runs = POLICIES.map(p => {
+  const r = DATA.runs[p.key];
+  const v = r.visits; // [cluster, depart, arrive, end, readings]
+  const cum = []; let s = 0;
+  for (const x of v) { s += x[4]; cum.push(s); }
+  return { ...p, r, v, cum };
+});
+
+const mapsEl = document.getElementById("maps");
+for (const p of runs) {
+  const el = document.createElement("div");
+  el.className = "map";
+  el.innerHTML = `
+    <div class="map-head"><h3><span class="swatch" style="background:var(${p.color})"></span>${p.name}</h3></div>
+    <canvas width="600" height="600" aria-label="${p.name} UAV route"></canvas>
+    <div class="live">
+      <div><span>Data</span><b data-k="data">0</b></div>
+      <div><span>Visits</span><b data-k="visits">0</b></div>
+      <div><span>Hovering</span><b data-k="hover">0 s</b></div>
+    </div>
+    <p class="final">Whole mission: PDR <b>${p.r.pdr.toFixed(3)}</b> · on-time <b>${Math.round(p.r.ontime * 100)} %</b> · CH energy <b>${Math.round(p.r.chJ)} J</b></p>`;
+  mapsEl.appendChild(el);
+  p.canvas = el.querySelector("canvas");
+  p.ctx = p.canvas.getContext("2d");
+  p.out = Object.fromEntries([...el.querySelectorAll("[data-k]")].map(b => [b.dataset.k, b]));
+}
+
+const SPAN = 500, PAD = 18;
+function toPx(x, y, size) { const s = (size - 2 * PAD) / SPAN; return [PAD + x * s, size - PAD - y * s]; }
+function meet(c) { return DATA.clusters[c]; }
+
+function indexAt(v, t) { // last visit with depart <= t
+  let lo = 0, hi = v.length - 1, ans = -1;
+  while (lo <= hi) { const m = (lo + hi) >> 1; if (v[m][1] <= t) { ans = m; lo = m + 1; } else hi = m - 1; }
+  return ans;
+}
+function posAt(p, i, t) {
+  if (i < 0) return { xy: [0, 0], hovering: false };
+  const [c, dep, arr] = p.v[i];
+  const from = i === 0 ? [0, 0] : meet(p.v[i - 1][0]);
+  const to = meet(c);
+  if (t >= arr) return { xy: to, hovering: true, c };
+  const f = (t - dep) / Math.max(1e-6, arr - dep);
+  return { xy: [from[0] + f * (to[0] - from[0]), from[1] + f * (to[1] - from[1])], hovering: false, c };
+}
+
+function draw(p, t) {
+  const ctx = p.ctx, size = p.canvas.width;
+  ctx.fillStyle = colors["--field"]; ctx.fillRect(0, 0, size, size);
+  // grid every 100 m
+  ctx.strokeStyle = colors["--rule"]; ctx.lineWidth = 1;
+  for (let m = 0; m <= SPAN; m += 100) {
+    const [x0, y0] = toPx(m, 0, size), [x1, y1] = toPx(m, SPAN, size);
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    const [a0, b0] = toPx(0, m, size), [a1, b1] = toPx(SPAN, m, size);
+    ctx.beginPath(); ctx.moveTo(a0, b0); ctx.lineTo(a1, b1); ctx.stroke();
+  }
+  // sensors
+  ctx.fillStyle = colors["--muted"]; ctx.globalAlpha = 0.55;
+  for (const n of DATA.nodes) { const [x, y] = toPx(n[0], n[1], size); ctx.fillRect(x - 1.5, y - 1.5, 3, 3); }
+  ctx.globalAlpha = 1;
+  const i = indexAt(p.v, t);
+  const col = colors[p.color];
+  // trail: last 14 legs
+  const start = Math.max(0, i - 14);
+  for (let k = start; k <= i; k++) {
+    const from = k === 0 ? [0, 0] : meet(p.v[k - 1][0]);
+    const to = k === i ? posAt(p, i, t).xy : meet(p.v[k][0]);
+    const [x0, y0] = toPx(from[0], from[1], size), [x1, y1] = toPx(to[0], to[1], size);
+    ctx.strokeStyle = col; ctx.globalAlpha = 0.15 + 0.75 * (k - start + 1) / (i - start + 1);
+    ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  // meeting points
+  const here = i >= 0 ? posAt(p, i, t) : null;
+  DATA.clusters.forEach((m, c) => {
+    const [x, y] = toPx(m[0], m[1], size);
+    const active = here && here.hovering && here.c === c;
+    ctx.beginPath(); ctx.arc(x, y, active ? 11 : 6, 0, Math.PI * 2);
+    ctx.lineWidth = active ? 3 : 1.5; ctx.strokeStyle = active ? col : colors["--fg"];
+    ctx.globalAlpha = active ? 1 : 0.45; ctx.stroke(); ctx.globalAlpha = 1;
+  });
+  // UAV
+  if (here) {
+    const [x, y] = toPx(here.xy[0], here.xy[1], size);
+    let ang = -Math.PI / 2;
+    if (!here.hovering && i >= 0) {
+      const from = i === 0 ? [0, 0] : meet(p.v[i - 1][0]), to = meet(p.v[i][0]);
+      ang = Math.atan2(-(to[1] - from[1]), to[0] - from[0]);
+    }
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    ctx.fillStyle = col; ctx.strokeStyle = colors["--panel"]; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(-8, 8); ctx.lineTo(-8, -8); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+  // counters
+  let done = -1, lo = 0, hi = p.v.length - 1;
+  while (lo <= hi) { const m = (lo + hi) >> 1; if (p.v[m][3] <= t) { done = m; lo = m + 1; } else hi = m - 1; }
+  let hover = 0;
+  for (let k = 0; k <= i; k++) { const [, , arr, end] = p.v[k]; hover += Math.max(0, Math.min(t, end) - arr); }
+  p.out.data.textContent = (done >= 0 ? p.cum[done] : 0).toLocaleString();
+  p.out.visits.textContent = (i + 1).toLocaleString();
+  p.out.hover.textContent = Math.round(hover).toLocaleString() + " s";
+}
+
+const scrub = document.getElementById("scrub"), clock = document.getElementById("clock");
+const playBtn = document.getElementById("play"), speedSel = document.getElementById("speed");
+let t = 2400, playing = false, last = 0;
+function fmt(s) { s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); }
+function render() { for (const p of runs) draw(p, t); scrub.value = Math.round(t); clock.textContent = `${fmt(t)} / 2:00:00`; }
+function frame(ts) {
+  if (!playing) return;
+  const dt = last ? (ts - last) / 1000 : 0; last = ts;
+  t = Math.min(T_END, t + dt * Number(speedSel.value));
+  render();
+  if (t >= T_END) { playing = false; playBtn.textContent = "Replay"; return; }
+  requestAnimationFrame(frame);
+}
+playBtn.addEventListener("click", () => {
+  if (playing) { playing = false; playBtn.textContent = "Play"; return; }
+  if (t >= T_END) t = 0;
+  playing = true; last = 0; playBtn.textContent = "Pause"; requestAnimationFrame(frame);
+});
+scrub.addEventListener("input", () => { t = Number(scrub.value); render(); });
+
+// results charts
+const LABELS = {
+  tour_fixed: "Tour, fixed window", tour_adaptive: "Tour, adaptive window",
+  nearest_feasible: "Nearest feasible", data_greedy: "Data greedy", energy_data_score: "Energy-data score",
+  ppo_A1: "PPO A1", ppo_A2: "PPO A2 (+ lateness)", ppo_A3: "PPO A3 (+ adaptive)", ppo_A4: "ER-PPO A4 (+ risk)", ppo_A4P: "PPO A4P (+ promise length)",
+};
+const ORDER = ["nearest_feasible", "data_greedy", "energy_data_score", "tour_fixed", "tour_adaptive", "ppo_A1", "ppo_A2", "ppo_A3", "ppo_A4", "ppo_A4P"];
+const METRICS = [
+  { key: "data.pdr", title: "Packet delivery ratio", lo: 0.5, hi: 1, ticks: [0.5, 0.75, 1], f: v => v.toFixed(3) },
+  { key: "wake.meeting_success_rate", title: "Meetings on time", lo: 0, hi: 1, ticks: [0, 0.5, 1], f: v => Math.round(v * 100) + " %" },
+  { key: "energy.primary_ch_mean_J", title: "Cluster-head energy (J), lower is better", lo: 0, hi: 300, ticks: [0, 150, 300], f: v => Math.round(v) },
+];
+function colorFor(v) { return v.startsWith("ppo") ? "--ppo" : v.startsWith("tour") ? "--tour" : "--other"; }
+function drawCharts() {
+  const box = document.getElementById("charts"); box.innerHTML = "";
+  const W = 340, LW = 150, RH = 24, top = 8, H = top + ORDER.length * RH + 26;
+  for (const m of METRICS) {
+    const x = v => LW + (W - LW - 46) * (Math.max(m.lo, Math.min(m.hi, v)) - m.lo) / (m.hi - m.lo);
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${m.title}">`;
+    for (const tk of m.ticks) s += `<line x1="${x(tk)}" x2="${x(tk)}" y1="${top - 4}" y2="${top + ORDER.length * RH}" stroke="${colors["--rule"]}"/><text x="${x(tk)}" y="${H - 6}" text-anchor="middle">${m.f(tk)}</text>`;
+    ORDER.forEach((v, k) => {
+      const [mean, ci] = DATA.summary[v][m.key];
+      const y = top + k * RH + RH / 2, c = colors[colorFor(v)];
+      if (k === 3 || k === 5) s += `<line x1="0" x2="${W}" y1="${top + k * RH}" y2="${top + k * RH}" stroke="${colors["--rule"]}" stroke-dasharray="2 3"/>`;
+      s += `<text class="lab" x="0" y="${y + 4}">${LABELS[v]}</text>`;
+      s += `<rect x="${x(m.lo)}" y="${y - 6}" width="${Math.max(1, x(mean) - x(m.lo))}" height="12" rx="2" fill="${c}" opacity="0.85"/>`;
+      s += `<line x1="${x(mean - ci)}" x2="${x(mean + ci)}" y1="${y}" y2="${y}" stroke="${colors["--fg"]}" stroke-width="1.5"/>`;
+      s += `<text x="${Math.min(W - 2, x(mean + ci) + 5)}" y="${y + 4}" text-anchor="${x(mean + ci) + 40 > W ? "end" : "start"}">${m.f(mean)}</text>`;
+    });
+    s += `</svg>`;
+    const d = document.createElement("div"); d.className = "chart";
+    d.innerHTML = `<h3>${m.title}</h3>${s}`; box.appendChild(d);
+  }
+}
+drawCharts();
+render();
+
+function retheme() { readColors(); render(); drawCharts(); }
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", retheme);
+new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+document.querySelectorAll("[data-copy]").forEach(b => b.addEventListener("click", () => {
+  const el = document.getElementById(b.dataset.copy);
+  navigator.clipboard.writeText(el.textContent).then(() => { b.textContent = "Copied"; setTimeout(() => b.textContent = "Copy", 1500); })
+    .catch(() => { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); });
+}));
+</script>
+
+</body>
+</html>

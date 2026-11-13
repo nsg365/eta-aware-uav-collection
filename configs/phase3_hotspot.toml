@@ -1,0 +1,17 @@
+# Phase 0 layout for Phase 3 experiment D: sensors in 20 Gaussian hotspots, so clusters differ a
+# lot in size and data rate. Same radio settings as configs/default.toml (R_UAV = 30 m, D19).
+[topology]
+num_sensors = 100
+area_m = 500.0
+seed = 1
+sensor_range_m = 80.0
+dbscan_kappa = 0.8
+dbscan_min_samples = 3
+uav_range_m = 30.0
+alpha = 0.5
+min_candidates = 2
+depot_x = 0.0
+depot_y = 0.0
+deployment_mode = "gaussian_hotspot"
+hotspot_count = 20
+hotspot_std_m = 15.0

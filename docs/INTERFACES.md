@@ -58,8 +58,9 @@ Per run, in `outDir`:
 | `eta.mean_signed_error_s, mae_s, rmse_s, late_beyond_window_frac` | actual − promised arrival | counted |
 | `run.wall_time_s` | simulation wall-clock time | measured |
 
-Not yet measured (do not report): retries, CH failures/promotions, re-bootstraps, ML
-training/inference cost, depot offload.
+Not yet measured (do not report): retries, CH failures/promotions, re-bootstraps, depot
+offload. ML cost is outside metrics.json: training wall time is in each model's `.json`,
+inference time per decision in `ppo.json` (§5).
 
 ## 4. Aggregated results (producer: Phase 4)
 
@@ -70,8 +71,27 @@ training/inference cost, depot offload.
 ## 5. Routing policy (producers: Phases 2–3)
 
 C++ `RoutingPolicy` in `simulation/ns3/wsn-uav/routing-policy.h`:
-`uint32_t Next(const World&)` and `bool CommitsToOrder()`. Phase 3 adds an external policy whose
-`Next()` calls the Python agent; the bridge is chosen in Phase 3.
+`uint32_t Next(const World&)` and `bool CommitsToOrder()`. Two optional hooks were added in
+Phase 3: `double PromiseFactor()` (length of the promise made at the next contact, in units of P;
+default 1) and `void OnEpisodeEnd(const World&)`.
+
+**External policy (Phase 3).** `routing=external` with `--bridgeFdIn` / `--bridgeFdOut`: ns-3
+flies the survey lap itself, then for every decision writes one text line to `bridgeFdOut` and
+reads the reply from `bridgeFdIn`. The Python side is `routing/env.py` (`WsnUavEnv`).
+
+- Decision: `D <now> <current> <x> <y> | <7 totals> | <10 fields per cluster> ...`
+  - totals: delivered, generated, windows missed, retry successes, flight s, hover s, CH Wi-Fi J
+    (used only for the reward);
+  - per cluster: meeting x, meeting y, estimated buffer, estimated rate, last reported energy,
+    time since contact, time until promise (−1 if none), missed meetings, never contacted,
+    lateness quantile.
+- Reply: `<cluster> [<promise factor>]`.
+- End of mission: `E | <7 totals>`.
+
+**Trained policies in experiments.** A variant with `routing = "ppo"` and `model = <path>` runs a
+trained model through the bridge (`routing/evaluate.py`). Each such run also writes `ppo.json`
+(return, decisions, mean and p95 inference time per decision in ms), flattened into `runs.csv`
+as `ppo.*`.
 
 ## 6. UAV belief state (producer: Phase 2; consumer: Phase 3)
 

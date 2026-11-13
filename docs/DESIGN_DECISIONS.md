@@ -222,9 +222,18 @@ separation.
 
 Simplify first, add back only if an ablation shows a gain:
 - Reward (31) has six terms. Start with R_D − β_E·R_UAV − β_M·R_miss.
+  *Outcome (Phase 3, 10 Nov):* that was not enough. Without a CH-energy term, every learner
+  (PPO and DQN, with or without a tour warm start) settled on hovering and collecting data
+  through the CHs' retry and discovery listening. That uses 2.4 × the tour's CH energy for
+  about 5 % less data. R_sensor was added back as the CH Wi-Fi energy (docs/MDP.md §4).
+  The fixed 1 × P promise was also relaxed for PPO: the policy may choose 0.75, 1 or
+  1.5 × P (D7 option b, variant A4P).
 - Urgency (29) adds three more coefficients.
 - Semi-MDP discount γ^{Δt/T0}: SB3 PPO uses a fixed γ; this needs a custom wrapper, so verify
   before claiming it.
+  *Outcome (Phase 3, 11 Nov):* needed and implemented (`routing/ppo_extras.py`, T0 = 15 s).
+  With a fixed γ per decision, PPO drifted toward fewer, longer decisions (waiting at meeting
+  points), since those fit more of the mission into the discount horizon.
 - Shannon planning rate (7): use the configured ns-3 PHY rate instead.
 - The 9-feature quantile MLP: start with an empirical quantile per (distance, stops-ahead) bin.
 
@@ -259,3 +268,19 @@ At 30 m, 4,998 of 5,000 packets were delivered. Delivery degraded and became mor
 | Nakagami m = 3 | 100 % | 100 % | 92.8 % (89.8) | 55.9 % | 50.5 % | 46.6 % |
 
 The simulated link has no fading, so it is a hard cutoff at 41 m (ns-3's −82 dBm preamble-detection threshold at 30 m altitude). 30 m is kept as a conservative radius: it is the largest that keeps ≥ 99 % delivery in every seed under moderate fading (m ≥ 2). Data: `results/sample/range_calibration.csv`. Reproduce: `./ns3 build wsn-uav-range`, then `build/scratch/wsn-uav-range/ns3.47-wsn-uav-range-default --out=range.csv --maxRho=50 --step=1 --packets=1000 --nakagamiM=2 --seed=1`.
+
+## D20. PPO training uses tour demonstrations — Decided (Phase 3, 11 Nov)
+
+**Paper.** Sec. III-G: "PPO then learns from its own on-policy rollouts after bootstrap; no replay
+buffer or off-policy transition pre-filling is used."
+**Deviation.** Two steps use recorded tour decisions:
+1. before PPO starts, the policy is trained to copy the tour on 50 000 tour decisions and the
+   critic to predict the tour's returns (warm start);
+2. during PPO, a few behaviour-cloning steps on those decisions follow each rollout, with a
+   weight fading linearly from 1 to 0 over the whole training run.
+The PPO updates themselves remain on-policy, and there is still no replay buffer.
+**Why.** PPO from scratch reached only 59 % on-time meetings (PDR 0.926) in 300 000 decisions,
+against the tour's 92 % (docs/handoff/phase3.md §4). Without step 2, PPO drifted away from the
+tour before its critic could value it.
+**Effect on claims.** The learned policies start as the tour and deviate on 8–16 % of decisions
+(handoff §6). The paper should say that ER-PPO is initialised from the TSP tour.

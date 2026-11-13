@@ -1,0 +1,96 @@
+# Phase 3 red-team experiments (docs/MDP.md §6): does RL fail to beat the tour because of how it
+# is trained, or because the tour is hard to beat here? Each builds on the previous one; all are
+# A4P (promise length chosen by the policy) with the tour warm start. Train with
+#   python3 -m routing.train configs/phase3_fixes.toml --algo ppo --arch scoring --warm-start --variant A
+
+[train]
+name = "phase3_fixes"
+num_sensors = 100
+train_seeds = [101, 300]      # inclusive range of network seeds; disjoint from evaluation seeds
+eval_seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+timesteps = 1_000_000
+n_envs = 8
+
+[ppo]
+learning_rate = 3e-4
+n_steps = 512                 # per env, so 4096 decisions per update with 8 envs
+batch_size = 256
+n_epochs = 10
+gamma = 0.99                  # per decision; one decision is about 14 s of mission time
+gae_lambda = 0.95
+ent_coef = 0.01
+net_arch = [256, 256]
+
+[dqn]                         # routing/dqn.py (--algo dqn)
+lr = 1e-4
+gamma = 0.99
+n_step = 3
+buffer_size = 200_000
+batch_size = 256
+learning_starts = 5_000
+updates_per_step = 1          # gradient steps per vector step (n_envs decisions)
+tau = 0.005
+eps_start = 1.0
+eps_end = 0.05
+eps_fraction = 0.3
+
+[warm_start]                  # --warm-start
+demo_steps = 50_000           # tour decisions recorded before training
+epochs = 10                   # PPO: behaviour-cloning passes over them
+lr = 1e-3
+batch_size = 256
+
+[reward]                      # R = beta_d*R_D - beta_e*R_UAV - beta_m*R_miss - beta_c*R_CH - beta_r*R_risk
+beta_d = 1.0
+beta_e = 0.2
+beta_m = 1.0
+beta_c = 0.25                 # R_CH in units of one CH listening through one fixed window
+
+# Stress shared by all variants: 10 % of UAV legs delayed by U(10, 30) s (as in the Phase 2
+# p-sweep) and one hardware failure per CH-capable node per 10 h.
+[simulation]
+simTime = 7200.0
+wakeMode = "scheduled"
+uavDelayProb = 0.1
+uavDelayMin = 10.0
+uavDelayMax = 30.0
+chFailureRate = 2.78e-5
+
+[[variant]]
+name = "A"                    # time-based discount: gamma per t0 = 15 s instead of per decision
+adaptiveWindow = true
+risk_in_obs = true
+beta_r = 0.5
+promise_factors = [0.75, 1.0, 1.5]
+t0 = 15.0
+
+[[variant]]
+name = "B"                    # A + behaviour-cloning steps on tour decisions, decaying to 0
+adaptiveWindow = true
+risk_in_obs = true
+beta_r = 0.5
+promise_factors = [0.75, 1.0, 1.5]
+t0 = 15.0
+bc_weight = 1.0
+
+[[variant]]
+name = "C"                    # B + potential-based shaping on promises that can no longer be kept
+adaptiveWindow = true
+risk_in_obs = true
+beta_r = 0.5
+promise_factors = [0.75, 1.0, 1.5]
+t0 = 15.0
+bc_weight = 1.0
+shaping = true
+
+[[variant]]
+name = "D"                    # C on uneven traffic: 20 hotspots, CH buffers of 250 readings
+adaptiveWindow = true
+risk_in_obs = true
+beta_r = 0.5
+promise_factors = [0.75, 1.0, 1.5]
+t0 = 15.0
+bc_weight = 1.0
+shaping = true
+topology_config = "configs/phase3_hotspot.toml"
+bufferCapacity = 250
