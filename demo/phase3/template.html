@@ -97,13 +97,6 @@ tr.hl td { font-weight: 600; }
 ol.steps { margin: 0; padding-left: 1.3em; display: grid; gap: 10px; }
 ol.steps li::marker { font-family: var(--font-data); color: var(--muted); }
 
-/* script */
-.script { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 22px 24px; display: grid; gap: 16px; }
-.beat { display: grid; grid-template-columns: 9ch minmax(0, 1fr); gap: 4px 16px; }
-@media (max-width: 560px) { .beat { grid-template-columns: minmax(0, 1fr); } }
-.beat .t { font-family: var(--font-data); font-size: 0.8rem; color: var(--muted); padding-top: 3px; }
-.beat p { max-width: 68ch; }
-.beat em { color: var(--muted); }
 pre { margin: 0; font-family: var(--font-data); font-size: 0.85rem; background: var(--field); border-radius: 6px; padding: 12px 14px; overflow-x: auto; }
 .cmd { display: grid; gap: 6px; }
 .cmd-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
@@ -200,21 +193,6 @@ pre { margin: 0; font-family: var(--font-data); font-size: 0.85rem; background: 
       </table>
     </div>
     <p class="note col">PPO chose the tour's next stop at 100 % of decisions. Hand-written detours fly 279 m per visit against the tour's 129 m, and every skipped cluster misses the window it was promised. Under promise-based wake-up, changing the visiting order costs more than it gains, so the tour is close to optimal here.</p>
-  </section>
-
-  <section aria-labelledby="script-h">
-    <div class="stack col">
-      <h2 id="script-h">Talk script</h2>
-      <p class="note">About four minutes. Start the replay before you begin.</p>
-    </div>
-    <div class="script">
-      <div class="beat"><span class="t">0:00</span><p>Phase 3 is the reinforcement learning part. The question is: at every stop, which cluster should the UAV fly to next? I connected ns-3 to Python so that the simulator pauses at each decision and a PPO agent picks the next cluster.</p></div>
-      <div class="beat"><span class="t">0:40</span><p>The agent only sees what the UAV itself knows: the last buffer and energy each cluster head reported, how much slack is left on each promise, past missed meetings and its own lateness record. Nothing from the future. There is a test that checks this.</p></div>
-      <div class="beat"><span class="t">1:10</span><p><em>Point at the replay.</em> This is one two-hour mission on a network the agent never saw. Left is the ETA-aware tour, middle is ER-PPO, right is the data-greedy baseline from Phase 2. PPO and the tour both reach about 97 % delivery with about 90 % of meetings on time. Data-greedy chases full buffers across the map, keeps only 16 % of its promised meetings, and cluster heads burn more than twice the energy listening for it.</p></div>
-      <div class="beat"><span class="t">2:00</span><p>Getting here took several fixes. With the first reward every agent learned to hover and rely on the cluster heads' retry listening, so I added cluster-head energy to the reward. Then three training fixes: a discount based on mission time instead of per decision, imitation of the tour that fades out, and an early penalty on promises that can no longer be kept. On-time meetings went from 83 to 90 %.</p></div>
-      <div class="beat"><span class="t">2:50</span><p>On ten held-out networks, all four ablation variants match the tour. The differences have confidence intervals that include zero. The adaptive wake window gives the clearest gain, and the risk term adds a little more.</p></div>
-      <div class="beat"><span class="t">3:20</span><p>So why doesn't PPO beat the tour? I tested that directly. Even on uneven traffic where the tour loses 9 % of data to overflow, PPO converges to exactly the tour, and hand-written detour rules lose badly, because every detour breaks promises to the clusters it skips. With promise-based wake-up the tour is close to optimal, and PPO learning to match it is the correct result. All of this is reproducible with one command for Phase 4.</p></div>
-    </div>
   </section>
 
   <section aria-labelledby="live-h" class="col">
