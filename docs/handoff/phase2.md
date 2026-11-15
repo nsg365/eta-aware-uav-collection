@@ -625,6 +625,85 @@ Nearest-feasible has a significant coverage weakness and high variability.
 
 The appropriate policy therefore depends on the objective being optimised.
 
+### 9.8 Deployment Comparison and Gaussian Scalability Experiments
+
+#### Uniform vs. Gaussian deployment: 100 sensors
+
+A deployment comparison was conducted using 100 sensors over a 500 m × 500 m area. Both deployment modes used 10 seeds and all four routing policies, giving 40 runs per deployment mode.
+
+The following settings were kept consistent:
+- Sensor communication range: 80 m
+- UAV communication range: 30 m
+- DBSCAN: `kappa = 0.8`, `min_samples = 3` (resulting in `eps = 64 m`)
+- Simulation duration: 7200 s
+- `alpha = 0.5`, `min_candidates = 2`
+
+The results below show mean values across the 10 seeds.
+
+| Deployment | Policy | Clusters | Data delivered | PDR | Meeting success | Sensor energy (J) | UAV flight energy (J) | Runtime (s) |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| Uniform | data_greedy | 28.6 | 66,446.2 | 0.929 | 0.253 | 10,998.7 | 939,683.7 | 6.06 |
+| Uniform | energy_data_score | 28.6 | 63,504.3 | 0.890 | 0.168 | 10,877.0 | 835,744.1 | 5.95 |
+| Uniform | nearest_feasible | 28.6 | 43,372.3 | 0.602 | 0.858 | 4,107.2 | 697,275.1 | 4.76 |
+| Uniform | tour | 28.6 | 69,895.2 | 0.970 | 0.882 | 8,774.5 | 1,033,047.4 | 6.44 |
+| Gaussian | data_greedy | 4.4 | 70,837.6 | 0.990 | 0.829 | 2,777.4 | 1,038,794.4 | 2.50 |
+| Gaussian | energy_data_score | 4.4 | 70,432.2 | 0.985 | 0.781 | 2,611.0 | 1,020,174.3 | 2.52 |
+| Gaussian | nearest_feasible | 4.4 | 71,375.7 | 0.992 | 0.917 | 2,036.6 | 1,054,157.1 | 2.64 |
+| Gaussian | tour | 4.4 | 71,413.2 | 0.992 | 0.933 | 1,937.0 | 1,056,900.0 | 2.65 |
+
+The Gaussian deployment produced substantially fewer clusters than the uniform deployment (4.4 versus 28.6 on average). In these runs, Gaussian deployment also had higher PDR, lower sensor energy consumption, and shorter runtime across all four policies. UAV flight energy was higher for the Gaussian deployment across all four policies.
+
+An important metric caveat was observed in the uniform results: `data_greedy` and `energy_data_score` have relatively high PDR values (0.929 and 0.890), but low meeting-success values (0.253 and 0.168). This relationship should be investigated by checking the metric definitions and calculation paths before drawing strong conclusions about policy reliability.
+
+These are descriptive comparisons of the observed means. A paired statistical comparison and metric-definition audit remain outstanding; no statistical-significance claim is made here.
+
+#### Gaussian deployment scalability: 100, 1000 and 2000 sensors
+
+Three Gaussian deployment experiments were completed at 100, 1000 and 2000 sensors. Each experiment used 10 seeds and all four routing policies, resulting in 40 runs per sensor-count configuration.
+
+The Gaussian configurations used the same 500 m × 500 m area, 80 m sensor range, 30 m UAV range, four hotspots, and `hotspot_std_m = 25.0`. The DBSCAN and routing parameters were kept consistent across the three configurations.
+
+The table below reports mean PDR, delivered data and runtime across the 10 seeds.
+
+| Sensors | Policy | PDR | Data delivered | Runtime (s) |
+|---:|---|---:|---:|---:|
+| 100 | data_greedy | 0.990 | 70,837.6 | 2.50 |
+| 100 | energy_data_score | 0.985 | 70,432.2 | 2.52 |
+| 100 | nearest_feasible | 0.992 | 71,375.7 | 2.64 |
+| 100 | tour | 0.992 | 71,413.2 | 2.65 |
+| 1000 | data_greedy | 0.668 | 480,077.3 | 29.76 |
+| 1000 | energy_data_score | 0.631 | 454,002.7 | 31.12 |
+| 1000 | nearest_feasible | 0.753 | 542,389.7 | 36.24 |
+| 1000 | tour | 0.761 | 548,030.8 | 39.12 |
+| 2000 | data_greedy | 0.380 | 546,665.3 | 104.89 |
+| 2000 | energy_data_score | 0.328 | 472,055.8 | 95.78 |
+| 2000 | nearest_feasible | 0.474 | 682,417.4 | 137.24 |
+| 2000 | tour | 0.490 | 705,982.2 | 156.13 |
+
+The results show that delivered data increases with sensor count, but PDR decreases as the network becomes larger. Runtime also increases considerably, particularly between 1000 and 2000 sensors.
+
+For the `tour` policy, for example, mean delivered data increases from 71,413.2 at 100 sensors to 548,030.8 at 1000 sensors and 705,982.2 at 2000 sensors. Over the same configurations, PDR decreases from 0.992 to 0.761 and then 0.490, while runtime increases from 2.65 s to 39.12 s and 156.13 s.
+
+The average number of clusters also changes with network size: approximately 4.4, 5.7 and 7.0 for 100, 1000 and 2000 sensors, respectively. Therefore, the results reflect changes in both network size and resulting cluster topology.
+
+These experiments provide descriptive scalability evidence for the tested configurations. They do not establish statistical significance or prove that the observed trends will hold for all deployment settings.
+
+#### Experiment files and outputs
+
+Configuration files:
+- `configs/phase2_uniform_current.toml`
+- `configs/phase2_gaussian_multiseed.toml`
+- `configs/phase2_gaussian_1000.toml`
+- `configs/phase2_gaussian_2000.toml`
+
+Full experiment outputs:
+- `results/phase2_uniform_current/runs.csv`
+- `results/phase2_gaussian_multiseed/runs.csv`
+- `results/phase2_gaussian_1000/runs.csv`
+- `results/phase2_gaussian_2000/runs.csv`
+
+Separate smoke-test runs were also completed for the 1000- and 2000-sensor configurations. These are validation runs and are not included in the 10-seed aggregate results above.
+
 ---
 
 ## 10. Routing Smoke Experiment and Integration Tests
