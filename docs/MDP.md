@@ -22,8 +22,9 @@ change the other and this file.
 ## 2. Observation
 
 Clusters are put in slots ordered by flight time from the UAV, nearest first, with the
-current cluster last. Slots are padded to K_MAX = 40 (100-sensor networks have 21 to 37
-clusters). Sorting makes "slot 0" mean "nearest cluster" on every network, so one policy works
+current cluster last. Slots are padded to k_max: 40 by default (100-sensor networks have 21 to
+37 clusters); a variant can set `k_max` higher for bigger networks. The network's weights do not
+depend on k_max, only the observation length does, and each model's `.json` records it. Sorting makes "slot 0" mean "nearest cluster" on every network, so one policy works
 across topologies.
 
 Per slot, 13 features. Here P is the promise period (one tour lap, D7) and d_scale is the
@@ -136,7 +137,9 @@ Reference returns on training networks (A4P settings, 3 networks):
 ## 6. Training and evaluation
 
 - **Training:** MaskablePPO (sb3-contrib 2.8.0) on network seeds 101–300. Each episode draws a
-  network at random.
+  network at random. With `areas` (a list of field sizes in metres), the seed also picks the
+  field size, and the sensor count keeps the density of `topology_config` (100 sensors per
+  500 × 500 m by default), so one model sees networks of about 6 to 50 clusters.
 - **Evaluation:** on network seeds 1–10, the same networks as the Phase 2 baselines, never
   seen in training. The policy acts deterministically.
 - **Settings:** `configs/phase3_ppo.toml` for training, `configs/phase3_eval.toml` for

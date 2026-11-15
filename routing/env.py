@@ -6,7 +6,7 @@ cluster id. This module turns that line into a fixed-size observation, an action
 reward. docs/MDP.md is the specification; keep the two in sync.
 
 Clusters are presented in slots sorted by flight time from the UAV (nearest first, the current
-cluster last), padded to K_MAX. The action is a slot index, so one policy works across
+cluster last), padded to k_max slots (K_MAX = 40 unless a variant sets k_max). The action is a slot index, so one policy works across
 topologies with different cluster counts.
 """
 
@@ -24,7 +24,7 @@ import numpy as np
 from clustering.topology import TopologyParams, build_topology, write_topology
 from experiments.run_experiment import REPO, ns3_binary, sim_args
 
-K_MAX = 40
+K_MAX = 40  # default slot count; old models were trained with it
 SLOT_FEATURES = 13
 GLOBAL_FEATURES = 3
 TOTALS = 7  # delivered generated windows_missed retry_successes flight_s hover_s ch_wifi_J
@@ -45,6 +45,9 @@ class EnvSettings:
     simulation: dict = field(default_factory=dict)
     topology_config: Path = REPO / "configs" / "default.toml"
     num_sensors: int = 100
+    k_max: int = K_MAX          # observation slots; networks with more clusters cannot be run
+    areas: tuple = ()           # training: field sizes [m] to draw networks from, at the density of
+                                # num_sensors per area_m^2 of topology_config; () = topology_config as is
     risk_in_obs: bool = False   # A2+: lateness quantile per cluster in the observation
     beta_d: float = 1.0         # delivered data
     beta_e: float = 0.2         # UAV flight + hover energy
@@ -58,11 +61,24 @@ class EnvSettings:
     cache: Path = REPO / "results" / "rl_cache"
 
 
+def network_size(s: EnvSettings, seed: int) -> tuple[int, float | None]:
+    """(sensors, field size) of a training network. With `areas`, the seed picks the field size
+    and the sensor count keeps the density of the base layout, so cluster counts vary."""
+    if not s.areas:
+        return s.num_sensors, None
+    area = float(s.areas[seed % len(s.areas)])
+    base = TopologyParams.from_toml(s.topology_config).area_m
+    return round(s.num_sensors * (area / base) ** 2), area
+
+
 def ensure_topology(s: EnvSettings, seed: int) -> Path:
     """Phase 0 output for (num_sensors, seed), built once and shared by all env processes."""
-    out = s.cache / "topologies" / Path(s.topology_config).stem / f"n{s.num_sensors}" / f"s{seed}"
+    n, area = network_size(s, seed)
+    size = f"n{n}" if area is None else f"n{n}_a{area:g}"
+    out = s.cache / "topologies" / Path(s.topology_config).stem / size / f"s{seed}"
     if not (out / "clusters.csv").exists():
-        p = TopologyParams.from_toml(s.topology_config, num_sensors=s.num_sensors, seed=seed)
+        p = TopologyParams.from_toml(s.topology_config, num_sensors=n, seed=seed,
+                                     area_m=area)
         out.parent.mkdir(parents=True, exist_ok=True)
         tmp = Path(tempfile.mkdtemp(dir=out.parent))
         write_topology(tmp, p, *build_topology(p))
@@ -97,9 +113,9 @@ class WsnUavEnv(gym.Env):
         self.s = settings
         self.out_dir = out_dir  # keep metrics.json of every episode here (evaluation)
         self.observation_space = gym.spaces.Box(
-            -np.inf, np.inf, (K_MAX * SLOT_FEATURES + GLOBAL_FEATURES,), np.float32)
+            -np.inf, np.inf, (settings.k_max * SLOT_FEATURES + GLOBAL_FEATURES,), np.float32)
         self.nf = len(settings.promise_factors)
-        self.action_space = gym.spaces.Discrete(K_MAX * self.nf)
+        self.action_space = gym.spaces.Discrete(settings.k_max * self.nf)
         self.proc: subprocess.Popen | None = None
         self.episode = 0
         self.seed_now = settings.seeds[0]
@@ -178,8 +194,8 @@ class WsnUavEnv(gym.Env):
         self.tour = tour
         self.tour_next = np.empty(self.K, dtype=int)
         self.tour_next[tour] = np.roll(tour, -1)
-        if self.K > K_MAX:
-            raise ValueError(f"{self.K} clusters > K_MAX={K_MAX}")
+        if self.K > self.s.k_max:
+            raise ValueError(f"{self.K} clusters > k_max={self.s.k_max}")
         n = sum(1 for _ in open(topo / "nodes.csv")) - 1
         self.sim = {**SIM_DEFAULTS, **self.s.simulation}
         self.P = promise_period(self.meet, tour, self.sim)
@@ -246,9 +262,9 @@ class WsnUavEnv(gym.Env):
         travel = np.hypot(cl[:, 0] - x, cl[:, 1] - y) / self.sim["uavSpeed"]
         is_cur = np.arange(self.K) == cur
         order = np.lexsort((travel, is_cur))  # nearest first, current cluster last
-        self.slot_cluster = np.full(K_MAX, -1)
+        self.slot_cluster = np.full(self.s.k_max, -1)
         self.slot_cluster[:self.K] = order
-        slot_mask = np.zeros(K_MAX, bool)
+        slot_mask = np.zeros(self.s.k_max, bool)
         slot_mask[:self.K] = ~is_cur[order]
         self.mask = np.repeat(slot_mask, self.nf)  # action = slot * nf + promise-factor index
 
@@ -256,7 +272,7 @@ class WsnUavEnv(gym.Env):
         never = cl[:, 8] > 0.5
         promised = cl[:, 6] >= 0
         slack = np.where(promised, cl[:, 6] - travel, 0.0)
-        f = np.zeros((K_MAX, SLOT_FEATURES), np.float32)
+        f = np.zeros((self.s.k_max, SLOT_FEATURES), np.float32)
         f[:self.K] = np.column_stack([
             np.ones(self.K),
             travel / P,

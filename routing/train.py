@@ -29,13 +29,13 @@ from stable_baselines3.common.callbacks import CallbackList
 from stable_baselines3.common.vec_env import SubprocVecEnv, VecMonitor
 
 from experiments.run_experiment import REPO
-from routing.env import K_MAX, EnvSettings, make_env
+from routing.env import EnvSettings, make_env
 
 ENV_KEYS = {"risk_in_obs", "beta_d", "beta_e", "beta_m", "beta_c", "beta_r",
-            "promise_factors", "shaping"}
+            "promise_factors", "shaping", "k_max"}
 # Variant keys for training only (routing/ppo_extras.py): time-based discount (t0 seconds),
 # staying near the tour (bc_weight, bc_decay_steps), and the Phase 0 layout to train on.
-TRAIN_KEYS = {"t0", "bc_weight", "bc_decay_steps", "topology_config"}
+TRAIN_KEYS = {"t0", "bc_weight", "bc_decay_steps", "topology_config", "areas"}
 
 
 def load(config: Path) -> dict:
@@ -52,9 +52,10 @@ def variant_settings(cfg: dict, variant: dict, seeds: list[int]) -> EnvSettings:
     topo = variant.get("topology_config", cfg["train"].get("topology_config"))
     if topo:
         env["topology_config"] = REPO / topo
+    areas = tuple(variant.get("areas", cfg["train"].get("areas", ())))
     return EnvSettings(seeds=seeds, simulation=sim, num_sensors=cfg["train"]["num_sensors"],
                        gamma=cfg.get("ppo", {}).get("gamma", 0.99), t0=variant.get("t0", 15.0),
-                       **env)
+                       areas=areas, **env)
 
 
 def train_seeds(cfg: dict) -> list[int]:
@@ -173,7 +174,7 @@ def train(cfg: dict, variant: dict, algo: str, arch: str, warm: bool, timesteps:
         if warm:
             dqn.setdefault("demo_steps", cfg.get("warm_start", {}).get("demo_steps", 50_000))
         agent = MaskedDQN(vec.observation_space.shape[0],
-                          arch={"n_out": vec.action_space.n // K_MAX}, **dqn)
+                          arch={"n_out": vec.action_space.n // settings.k_max}, **dqn)
         agent.learn(vec, timesteps, log_path=out / f"{mname}_train.monitor.csv")
         vec.close()
         path = out / f"{mname}.pt"
@@ -182,7 +183,7 @@ def train(cfg: dict, variant: dict, algo: str, arch: str, warm: bool, timesteps:
     commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=REPO,
                             capture_output=True, text=True).stdout.strip()
     meta = {"variant": variant["name"], "algo": algo, "arch": "scoring" if algo == "dqn" else arch,
-            "warm_start": warm, "num_sensors": settings.num_sensors,
+            "warm_start": warm, "num_sensors": settings.num_sensors, "areas": list(settings.areas),
             "simulation": settings.simulation,
             # sim keys that define the variant; evaluation applies them on top of its own
             "variant_simulation": {k: v for k, v in variant.items()

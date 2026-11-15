@@ -17,16 +17,15 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from routing.env import K_MAX
-from routing.networks import ClusterScorer
+from routing.networks import ClusterScorer, slot_count
 
 
 class Replay:
-    def __init__(self, size: int, obs_dim: int):
+    def __init__(self, size: int, obs_dim: int, n_act: int):
         self.o = np.zeros((size, obs_dim), np.float32)
-        self.m = np.zeros((size, K_MAX), bool)
+        self.m = np.zeros((size, n_act), bool)
         self.o2 = np.zeros((size, obs_dim), np.float32)
-        self.m2 = np.zeros((size, K_MAX), bool)
+        self.m2 = np.zeros((size, n_act), bool)
         self.a = np.zeros(size, np.int64)
         self.r = np.zeros(size, np.float32)
         self.g = np.zeros(size, np.float32)  # discount to the bootstrap state; 0 at episode end
@@ -87,8 +86,9 @@ class MaskedDQN:
         self.eps = (eps_start, eps_end, eps_fraction)
         self.demo_steps, self.demo_fraction = demo_steps, demo_fraction
         self.margin, self.margin_weight = margin, margin_weight
-        self.buf = Replay(buffer_size, obs_dim)
-        self.demo = Replay(max(demo_steps, 1), obs_dim)
+        n_act = slot_count(obs_dim) * self.arch.get("n_out", 1)
+        self.buf = Replay(buffer_size, obs_dim, n_act)
+        self.demo = Replay(max(demo_steps, 1), obs_dim, n_act)
         self.rng = np.random.default_rng(seed)
         torch.manual_seed(seed)
 
