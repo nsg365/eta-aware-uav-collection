@@ -237,3 +237,27 @@ are the retrained numbers.
 - The optional quantile MLP (eqs. 13–16) was not built; Phase 2's empirical quantile is used.
 - Where the tour is not close to optimal (e.g. a different wake scheme, or no promises), PPO
   might gain. Not tested.
+
+## 10. Follow-up: the models on Prakruthi's Gaussian-hotspot networks (19 Nov)
+
+The A1–A4 and A4P models (trained on 100-sensor uniform networks) were run unchanged on the
+Gaussian-hotspot networks of `configs/phase2_gaussian_*.toml` (4 hotspots, 100/1000/2000
+sensors, 10 networks each), with no extra UAV delay (the noise agreed after the review meeting)
+and the usual CH failures. Config: `configs/phase3_gaussian_scaling.toml`.
+
+| Sensors (clusters) | Tour PDR / on-time | Best other baseline PDR | A4 PDR / on-time | A3 PDR / on-time |
+|---|---|---|---|---|
+| 100 (4.4) | 0.993 / 1.000 | 0.993 (nearest feasible) | 0.993 / 0.999 | 0.993 / 0.949 |
+| 1000 (5.7) | 0.853 / 1.000 | 0.846 (nearest feasible) | 0.852 / 0.998 | 0.821 / 0.939 |
+| 2000 (7.0) | 0.602 / 0.999 | 0.601 (nearest feasible) | 0.601 / 0.999 | 0.578 / 0.958 |
+
+- The models carry over to these networks without retraining. A4 matches the tour at every
+  size (PDR difference −0.1 points or less).
+- The PDR drop at 1000/2000 sensors is buffer overflow (tour: 14 % and 39 % of the data), the
+  same for every policy that keeps its promises. No visiting order fixes it, since each CH
+  serves 170–290 sensors and its 2000-reading buffer fills before the UAV can return.
+- Data greedy and energy-data score fall further behind as the network grows (PDR 0.50 and
+  0.45 at 2000 sensors).
+- Out of distribution, the risk term matters: A3 (no risk term) loses 3.2 ± 2.3 points of PDR
+  at 1000 sensors and keeps only 94 % of its meetings, while A4 stays with the tour. A4P is
+  slightly worse than A4 (−0.6 points).
