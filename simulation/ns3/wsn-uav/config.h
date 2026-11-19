@@ -55,6 +55,7 @@ struct SimConfig
     double uavAltitude = 30.0;
     double uavSpeed = 10.0;
     double uavSpeedStd = 1.0;  // per-leg speed noise; source of ETA error
+    double uavSpeedJitter = 0.0;
     double uavMinSpeed = 2.0;
 
     // Random extra delay applied independently to each UAV flight leg
@@ -128,6 +129,7 @@ struct SimConfig
         cmd.AddValue("uavAltitude", "UAV altitude H [m]", uavAltitude);
         cmd.AddValue("uavSpeed", "Mean UAV cruise speed [m/s]", uavSpeed);
         cmd.AddValue("uavSpeedStd", "Std-dev of per-leg UAV speed [m/s]", uavSpeedStd);
+        cmd.AddValue("uavSpeedJitter", "Fractional uniform per-leg speed variation; 0 disables it", uavSpeedJitter);
         cmd.AddValue("uavMinSpeed", "Lower clamp on per-leg UAV speed [m/s]", uavMinSpeed);
         cmd.AddValue("uavDelayProb", "Probability of extra UAV delay per flight leg [0,1]", uavDelayProb);
         cmd.AddValue("uavDelayMin", "Minimum extra UAV delay [s]", uavDelayMin);

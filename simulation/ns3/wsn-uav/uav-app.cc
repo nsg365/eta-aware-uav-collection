@@ -45,7 +45,7 @@ CalculateQuantile(std::vector<double> values, double quantile)
 
 UavApp::UavApp(World* world,
                std::unique_ptr<RoutingPolicy> policy,
-               Ptr<NormalRandomVariable> speed,
+               Ptr<RandomVariableStream> speed,
                Ptr<UniformRandomVariable> delay)
     : m_w(world),
       m_policy(std::move(policy)),
