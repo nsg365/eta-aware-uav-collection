@@ -286,12 +286,11 @@ Validate(const SimConfig& c, const RoutingPolicy& policy)
     NS_ABORT_MSG_IF(c.topologyDir.empty(), "--topologyDir is required");
     NS_ABORT_MSG_IF(c.wakeMode != "always_on" && c.wakeMode != "duty_cycle" && c.wakeMode != "scheduled",
                     "wakeMode must be always_on, duty_cycle or scheduled");
-    // NS_ABORT_MSG_IF(c.wakeMode == "scheduled" && !policy.CommitsToOrder(),
-    //                 "wakeMode=scheduled needs a routing policy that commits to a visit order "
-    //                 "(see docs/DESIGN_DECISIONS.md D7)");
     NS_ABORT_MSG_IF(c.dutyListen <= 0 || c.dutyListen >= c.dutyPeriod, "need 0 < dutyListen < dutyPeriod");
     NS_ABORT_MSG_IF(c.uavDelayProb < 0.0 || c.uavDelayProb > 1.0,
                     "uavDelayProb must be in [0, 1]");
+    NS_ABORT_MSG_IF(c.uavSpeedJitter < 0.0 || c.uavSpeedJitter >= 1.0,
+                    "uavSpeedJitter must be in [0, 1)");
     NS_ABORT_MSG_IF(c.uavDelayMin < 0.0 || c.uavDelayMax < c.uavDelayMin,
                     "need 0 <= uavDelayMin <= uavDelayMax");
     NS_ABORT_MSG_IF(c.wDrift < 0.0,
@@ -461,10 +460,40 @@ main(int argc, char* argv[])
             Simulator::Schedule(Seconds(0), &WifiPhy::SetSleepMode, p, false);
         }
     }
-    Ptr<NormalRandomVariable> speed = CreateObject<NormalRandomVariable>();
-    speed->SetAttribute("Mean", DoubleValue(cfg.uavSpeed));
-    speed->SetAttribute("Variance", DoubleValue(cfg.uavSpeedStd * cfg.uavSpeedStd));
-    speed->SetStream(STREAM_SPEED);
+    // Ptr<NormalRandomVariable> speed = CreateObject<NormalRandomVariable>();
+    // speed->SetAttribute("Mean", DoubleValue(cfg.uavSpeed));
+    // speed->SetAttribute("Variance", DoubleValue(cfg.uavSpeedStd * cfg.uavSpeedStd));
+    // speed->SetStream(STREAM_SPEED);
+
+    Ptr<RandomVariableStream> speed;
+
+    if (cfg.uavSpeedJitter > 0.0)
+    {
+        auto uniformSpeed = CreateObject<UniformRandomVariable>();
+
+        uniformSpeed->SetAttribute(
+            "Min",
+            DoubleValue(cfg.uavSpeed * (1.0 - cfg.uavSpeedJitter)));
+
+        uniformSpeed->SetAttribute(
+            "Max",
+            DoubleValue(cfg.uavSpeed * (1.0 + cfg.uavSpeedJitter)));
+
+        uniformSpeed->SetStream(STREAM_SPEED);
+        speed = uniformSpeed;
+    }
+    else
+    {
+        auto normalSpeed = CreateObject<NormalRandomVariable>();
+
+        normalSpeed->SetAttribute("Mean", DoubleValue(cfg.uavSpeed));
+        normalSpeed->SetAttribute(
+            "Variance",
+            DoubleValue(cfg.uavSpeedStd * cfg.uavSpeedStd));
+
+        normalSpeed->SetStream(STREAM_SPEED);
+        speed = normalSpeed;
+    }
 
     Ptr<UniformRandomVariable> uavDelay = CreateObject<UniformRandomVariable>();
     uavDelay->SetStream(STREAM_UAV_DELAY);
