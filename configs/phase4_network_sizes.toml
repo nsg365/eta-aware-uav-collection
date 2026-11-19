@@ -1,0 +1,74 @@
+
+# Phase 4: Network-size generalisation experiment
+# N = 60 and 150, using held-out seeds 1-10.
+# Same variants and simulation settings as Phase 3 evaluation.
+
+[experiment]
+name = "network_sizes"
+num_sensors = [60, 150]
+seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+[topology]
+area_m = 500.0
+sensor_range_m = 80.0
+dbscan_kappa = 0.8
+dbscan_min_samples = 3
+uav_range_m = 30.0
+alpha = 0.5
+min_candidates = 2
+depot_x = 0.0
+depot_y = 0.0
+
+[simulation]
+simTime = 7200.0
+wakeMode = "scheduled"
+uavDelayProb = 0.1
+uavDelayMin = 10.0
+uavDelayMax = 30.0
+chFailureRate = 2.78e-5
+
+[[variant]]
+name = "tour_fixed"
+routing = "tour"
+adaptiveWindow = false
+
+[[variant]]
+name = "tour_adaptive"
+routing = "tour"
+
+[[variant]]
+name = "nearest_feasible"
+routing = "nearest-feasible"
+
+[[variant]]
+name = "data_greedy"
+routing = "data-greedy"
+
+[[variant]]
+name = "energy_data_score"
+routing = "energy-data-score"
+
+[[variant]]
+name = "ppo_A1"
+routing = "ppo"
+model = "models/phase3_ppo/A1_ppo-scoring_ws.zip"
+
+[[variant]]
+name = "ppo_A2"
+routing = "ppo"
+model = "models/phase3_ppo/A2_ppo-scoring_ws.zip"
+
+[[variant]]
+name = "ppo_A3"
+routing = "ppo"
+model = "models/phase3_ppo/A3_ppo-scoring_ws.zip"
+
+[[variant]]
+name = "ppo_A4"
+routing = "ppo"
+model = "models/phase3_ppo/A4_ppo-scoring_ws.zip"
+
+[[variant]]
+name = "ppo_A4P"
+routing = "ppo"
+model = "models/phase3_fixes/C_ppo-scoring_ws.zip"
