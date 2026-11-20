@@ -99,21 +99,25 @@ CheckEnergy()
             dv->second->GetPhy()->SetOffMode();
         }
 
-        // Re-elect a standby if this sensor was assigned as backup
-        // and the cluster's primary is still alive.
-        for (auto& c : g_world.clusters)
+        // Re-elect a standby only when backup CH functionality is enabled.
+        if (g_world.cfg.enableBackupCH)
         {
-            if (c.backup == static_cast<int32_t>(s.id) &&
-                c.primary != s.id &&
-                g_world.sensors.at(c.primary).alive)
+            // Re-elect a standby if this sensor was assigned as backup
+            // and the cluster's primary is still alive.
+            for (auto& c : g_world.clusters)
             {
-                const int32_t replacement =
-                    g_world.ElectBackup(c.id, now);
+                if (c.backup == static_cast<int32_t>(s.id) &&
+                    c.primary != s.id &&
+                    g_world.sensors.at(c.primary).alive)
+                {
+                    const int32_t replacement =
+                        g_world.ElectBackup(c.id, now);
 
-                NS_LOG_INFO(
-                    now << "s standby sensor " << s.id
-                        << " died; replacement backup for cluster "
-                        << c.id << " is " << replacement);
+                    NS_LOG_INFO(
+                        now << "s standby sensor " << s.id
+                            << " died; replacement backup for cluster "
+                            << c.id << " is " << replacement);
+                }
             }
         }
     }
@@ -190,7 +194,7 @@ CheckPrimaryHeartbeats()
                         << c.id << ", primary sensor " << failedPrimaryId);
 
                 // Attempt backup promotion.
-                if (c.backup >= 0)
+                if (g_world.cfg.enableBackupCH && c.backup >= 0)
                 {
                     const uint32_t backupId =
                     static_cast<uint32_t>(c.backup);
@@ -461,7 +465,7 @@ main(int argc, char* argv[])
             app->SetStopTime(Seconds(cfg.simTime));
             g_chApp[s.id] = app;
         }
-        else
+        else if (cfg.enableBackupCH)
         {
             // Backup CH: Wi-Fi asleep until failover (Phase 1).
             Simulator::Schedule(Seconds(0), &WifiPhy::SetSleepMode, p, false);
@@ -539,7 +543,10 @@ main(int argc, char* argv[])
         Simulator::Schedule(Seconds(rv->GetValue()), &GenerateReading, id);
     }
     Simulator::Schedule(Seconds(cfg.energyCheckInterval), &CheckEnergy);
-    Simulator::Schedule(Seconds(cfg.replicationInterval), &ReplicateBuffers);
+    if (cfg.enableBackupCH)
+    {
+        Simulator::Schedule(Seconds(cfg.replicationInterval), &ReplicateBuffers);
+    }
     Simulator::Schedule(Seconds(cfg.heartbeatInterval), &CheckPrimaryHeartbeats);
 
     std::cout << "wsn-uav: N=" << N << " K=" << K << " wakeMode=" << cfg.wakeMode

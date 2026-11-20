@@ -1,3 +1,4 @@
+
 // Simulation configuration. Every field is a command-line argument of the same name;
 // experiments/run_experiment.py passes the [simulation] table of a TOML config verbatim.
 // Units are part of each description and are SI unless stated (s, m, m/s, W, J, A, dBm, dB).
@@ -93,6 +94,7 @@ struct SimConfig
     double planTimeout = 0.5;   // CH waits this long after DONE for a PLAN [s]
 
     // CH reliability and failover (paper Sec. III-F/G)
+    bool enableBackupCH = true; // false for A7: disable backup CH functionality
     double chFailureRate = 0.0;       // random primary failure hazard [1/s]
     double heartbeatInterval = 1.0;   // primary -> backup heartbeat interval [s]
     uint32_t missedHeartbeats = 3;    // m_h: consecutive misses before takeover
@@ -104,7 +106,7 @@ struct SimConfig
     void Register(ns3::CommandLine& cmd)
     {
         cmd.AddValue("topologyDir", "Directory with nodes.csv and clusters.csv (required)", topologyDir);
-        cmd.AddValue("outDir", "Output directory for metrics files", outDir);
+        cmd.AddValue("outDir", "Directory for metrics files", outDir);
         cmd.AddValue("seed", "ns-3 run number for all random streams", seed);
         cmd.AddValue("simTime", "Simulated mission horizon [s]", simTime);
         cmd.AddValue("energyCheckInterval", "Period of the node-death check [s]", energyCheckInterval);
@@ -162,9 +164,12 @@ struct SimConfig
         cmd.AddValue("adaptiveWindow", "Late window from the lateness quantile (else wakeHalfWidth)",
                      adaptiveWindow);
         cmd.AddValue("etaQuantile", "Empirical lateness percentile (0.80–0.99)", etaQuantile);
-        cmd.AddValue("etaMinSamples", "Minimum observations for adaptive ETA margin", etaMinSamples);
+        cmd.AddValue("etaMinSamples", "Minimum observations before adaptive estimation", etaMinSamples);
         cmd.AddValue("wDrift", "Maximum absolute per-CH clock offset [s]", wDrift);
         cmd.AddValue("planTimeout", "CH wait for PLAN after upload [s]", planTimeout);
+        cmd.AddValue("enableBackupCH",
+                     "Enable backup CH election, replication and failover",
+                     enableBackupCH);
         cmd.AddValue("chFailureRate", "Primary CH random failure hazard [1/s]", chFailureRate);
         cmd.AddValue("heartbeatInterval", "Primary-to-backup heartbeat interval [s]", heartbeatInterval);
         cmd.AddValue("missedHeartbeats", "Consecutive missed heartbeats before backup takeover m_h", missedHeartbeats);
