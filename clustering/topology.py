@@ -36,6 +36,7 @@ class TopologyParams:
     uav_range_m: float = 80.0  # R_UAV: horizontal CH-to-meeting-point coverage radius
     alpha: float = 0.5  # CH score weight on residual energy
     min_candidates: int = 2  # primary + backup (proposal says 3; see D4)
+    max_cluster_size: int | None = None
     depot_x: float = 0.0
     depot_y: float = 0.0
 
@@ -131,9 +132,15 @@ def _attach_noise(pos: np.ndarray, labels: np.ndarray, p: TopologyParams) -> np.
 
 
 def build_clusters(pos: np.ndarray, p: TopologyParams) -> tuple[list[Cluster], dict]:
+    if p.max_cluster_size is not None and p.max_cluster_size < 1:
+        raise ValueError("max_cluster_size must be at least 1")
     eps = p.dbscan_kappa * p.sensor_range_m
+    # labels = DBSCAN(eps=eps, min_samples=p.dbscan_min_samples).fit_predict(pos)
+    # n_noise = int((labels < 0).sum())
+    # labels = _attach_noise(pos, labels, p)
     labels = DBSCAN(eps=eps, min_samples=p.dbscan_min_samples).fit_predict(pos)
     n_noise = int((labels < 0).sum())
+    dbscan_clusters = len(set(labels[labels >= 0]))
     labels = _attach_noise(pos, labels, p)
 
     # Split any cluster with too few feasible CH candidates (2-means, recursively).
@@ -144,16 +151,50 @@ def build_clusters(pos: np.ndarray, p: TopologyParams) -> tuple[list[Cluster], d
     while pending:
         members = pending.pop()
         meet = pos[members].mean(axis=0)
+        # need = min(p.min_candidates, len(members))
+        # if len(feasible_candidates(pos, members, meet, p)) >= need:
+        #     clusters.append(Cluster(members=members, meet=meet))
+        #     continue
         need = min(p.min_candidates, len(members))
-        if len(feasible_candidates(pos, members, meet, p)) >= need:
+
+        has_enough_candidates = (
+            len(feasible_candidates(pos, members, meet, p)) >= need
+        )
+
+        within_size_limit = (
+            p.max_cluster_size is None
+            or len(members) <= p.max_cluster_size
+        )
+
+        if has_enough_candidates and within_size_limit:
             clusters.append(Cluster(members=members, meet=meet))
             continue
-        km = KMeans(n_clusters=2, n_init=10, random_state=p.seed).fit(pos[members])
-        pending += [members[km.labels_ == 0], members[km.labels_ == 1]]
+
+        if len(members) <= 1:
+            raise RuntimeError(
+                "Cannot split a singleton cluster further."
+            )
+
+        km = KMeans(
+            n_clusters=2,
+            n_init=10,
+            random_state=p.seed
+        ).fit(pos[members])
+
+        pending += [
+            members[km.labels_ == 0],
+            members[km.labels_ == 1]
+        ]
         n_splits += 1
 
     clusters.sort(key=lambda c: int(c.members.min()))  # deterministic cluster ids
-    diag = {"dbscan_eps_m": eps, "dbscan_noise_points": n_noise, "feasibility_splits": n_splits}
+    # diag = {"dbscan_eps_m": eps, "dbscan_noise_points": n_noise, "feasibility_splits": n_splits}
+    diag = {
+        "dbscan_eps_m": eps,
+        "dbscan_clusters": dbscan_clusters,
+        "dbscan_noise_points": n_noise,
+        "feasibility_splits": n_splits,
+    }
     return clusters, diag
 
 
@@ -196,10 +237,18 @@ def build_topology(p: TopologyParams) -> tuple[np.ndarray, list[Cluster], list[i
     pos = generate_positions(p)
     clusters, diag = build_clusters(pos, p)
     elect(pos, clusters, p)
-    order, length = survey_tour(np.array([p.depot_x, p.depot_y]),
-                                np.array([c.meet for c in clusters]))
-    diag.update(num_clusters=len(clusters), tour_length_m=length,
-                clusters_without_backup=sum(c.backup < 0 for c in clusters))
+    order, length = survey_tour(np.array([p.depot_x, p.depot_y]), np.array([c.meet for c in clusters]))
+    # diag.update(num_clusters=len(clusters), tour_length_m=length, clusters_without_backup=sum(c.backup < 0 for c in clusters))
+    cluster_sizes = [len(c.members) for c in clusters]
+    diag.update(
+        num_clusters=len(clusters),
+        tour_length_m=length,
+        clusters_without_backup=sum(c.backup < 0 for c in clusters),
+        singleton_clusters=sum(s == 1 for s in cluster_sizes),
+        avg_cluster_size=float(np.mean(cluster_sizes)),
+        min_cluster_size=int(np.min(cluster_sizes)),
+        max_cluster_size=int(np.max(cluster_sizes)),
+    )
     return pos, clusters, order, diag
 
 
@@ -233,8 +282,19 @@ def main() -> None:
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--seed", type=int)
     ap.add_argument("--num-sensors", type=int)
+    ap.add_argument("--hotspot-count", type=int)
+    ap.add_argument("--dbscan-kappa", type=float)
+    ap.add_argument("--max-cluster-size", type=int)
     a = ap.parse_args()
-    p = TopologyParams.from_toml(a.config, seed=a.seed, num_sensors=a.num_sensors)
+    # p = TopologyParams.from_toml(a.config, seed=a.seed, num_sensors=a.num_sensors)
+    p = TopologyParams.from_toml(
+        a.config,
+        seed=a.seed,
+        num_sensors=a.num_sensors,
+        hotspot_count=a.hotspot_count,
+        dbscan_kappa=a.dbscan_kappa,
+        max_cluster_size=a.max_cluster_size,
+    )
     pos, clusters, order, diag = build_topology(p)
     write_topology(a.out, p, pos, clusters, order, diag)
     print(json.dumps(diag))
