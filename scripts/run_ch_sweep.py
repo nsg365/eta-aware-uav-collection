@@ -46,7 +46,8 @@ VARIANTS = [
 SIM_PARAMS = dict(
     simTime=7200.0,
     uavSpeed=10.0,
-    uavSpeedStd=1.0,    # was uavSpeedJitter=0.1 in the TOML (not a valid ns-3 arg)
+    uavSpeedStd=0.0,
+    uavSpeedJitter=0.1,
     wakeMode="scheduled",
     etaMinSamples=5,
     adaptiveLateMargin=20.0,
