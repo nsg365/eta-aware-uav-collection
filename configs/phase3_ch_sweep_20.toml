@@ -1,0 +1,87 @@
+# Prakruthi's CH-count sweep (scripts/run_ch_sweep.py, same networks; speed noise is
+# uniform 9-11 m/s instead of her std 1 m/s) plus the
+# Phase 3 PPO models, used as they are (trained on 100-sensor uniform networks).
+#   python3 -m experiments.run_experiment configs/phase3_ch_sweep_20.toml -j 8
+# Target cluster count: ~20
+# Topology params: hotspot_count=15, max_cluster_size=75
+
+[experiment]
+name = "phase3_ch_sweep_20"
+num_sensors = [1000]
+seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+[topology]
+area_m = 500.0
+sensor_range_m = 80.0
+dbscan_kappa = 0.8
+dbscan_min_samples = 3
+uav_range_m = 30.0
+alpha = 0.5
+min_candidates = 2
+depot_x = 0.0
+depot_y = 0.0
+deployment_mode = "gaussian_hotspot"
+hotspot_count = 15
+hotspot_std_m = 25.0
+max_cluster_size = 75
+
+[simulation]
+simTime = 7200.0
+uavSpeed = 10.0
+uavSpeedJitter = 0.1            # sir's setting: uniform 9-11 m/s per leg (replaces the std-1 speed noise)
+wakeMode = "scheduled"
+etaMinSamples = 5
+adaptiveLateMargin = 20.0
+uavDelayProb = 0.0
+uavDelayMin = 1.0
+uavDelayMax = 5.0
+
+[[variant]]
+name = "tour"
+routing = "tour"
+etaQuantile = 0.95
+
+[[variant]]
+name = "nearest_feasible"
+routing = "nearest-feasible"
+etaQuantile = 0.95
+
+[[variant]]
+name = "data_greedy"
+routing = "data-greedy"
+etaQuantile = 0.95
+
+[[variant]]
+name = "energy_data_score"
+routing = "energy-data-score"
+etaQuantile = 0.95
+
+[[variant]]
+name = "ppo_A1"
+routing = "ppo"
+model = "models/phase3_ppo/A1_ppo-scoring_ws.zip"
+etaQuantile = 0.95
+
+[[variant]]
+name = "ppo_A2"
+routing = "ppo"
+model = "models/phase3_ppo/A2_ppo-scoring_ws.zip"
+etaQuantile = 0.95
+
+[[variant]]
+name = "ppo_A3"
+routing = "ppo"
+model = "models/phase3_ppo/A3_ppo-scoring_ws.zip"
+etaQuantile = 0.95
+
+[[variant]]
+name = "ppo_A4"
+routing = "ppo"
+model = "models/phase3_ppo/A4_ppo-scoring_ws.zip"
+etaQuantile = 0.95
+
+[[variant]]
+name = "ppo_A4P"
+routing = "ppo"
+model = "models/phase3_fixes/C_ppo-scoring_ws.zip"
+etaQuantile = 0.95
