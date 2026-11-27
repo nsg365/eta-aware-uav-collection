@@ -535,9 +535,12 @@ UavApp::Receive(Ptr<Socket> socket)
             m_planSent = true;
 
             // Promise the next tour period (scaled by the policy's promise factor, 1 for fixed
-            // policies), including extra time for uncontacted clusters.
+            // policies). The extra allowance for uncontacted clusters is used only when the
+            // initial survey lap is enabled; A9 removes this bootstrap adjustment.
             const SimConfig& cfg = m_w->cfg;
-            double surveyExtra = std::max(0.0, 0.5 * cfg.dutyPeriod - cfg.hoverBudget);
+            const double surveyExtra = cfg.enableSurveyLap
+                                           ? std::max(0.0, 0.5 * cfg.dutyPeriod - cfg.hoverBudget)
+                                           : 0.0;
 
             double eta = Simulator::Now().GetSeconds() + END_GUARD +
                          m_promiseFactor[m.cluster] * m_period + m_uncontacted * surveyExtra;

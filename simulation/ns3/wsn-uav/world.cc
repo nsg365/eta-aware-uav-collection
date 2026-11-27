@@ -150,10 +150,29 @@ World::LoadTopology(const std::string& dir)
             if (maxMemberDistance <= sensorRange) c.feasibleCandidates.push_back(candidate);
         }
         NS_ABORT_MSG_IF(c.feasibleCandidates.empty(), "Cluster " << c.id << " has no feasible CH candidates");
-        // Provision Wi-Fi-capable standby radios for every feasible candidate so that
-        // a later re-election can promote one without rebuilding the ns-3 network.
-        for (uint32_t id : c.feasibleCandidates)
-            if (id != c.primary) sensors.at(id).role = Role::BACKUP;
+        // A7: disable all backup CH functionality when requested.
+        if (cfg.enableBackupCH)
+        {
+            // Provision Wi-Fi-capable standby radios for feasible candidates.
+            for (uint32_t id : c.feasibleCandidates)
+            {
+                if (id != c.primary)
+                    sensors.at(id).role = Role::BACKUP;
+            }
+        }
+        else
+        {
+            // Remove the initially elected backup loaded from clusters.csv.
+            c.backup = -1;
+            c.backupBuffer = 0;
+
+            // Set every non-primary sensor to the member role.
+            for (const auto& sensor : sensors)
+            {
+                if (sensor.cluster == c.id && sensor.id != c.primary)
+                    sensors.at(sensor.id).role = Role::MEMBER;
+            }
+        }
     }
 }
 
@@ -166,6 +185,9 @@ World::Airtime154() const
 void
 World::ReplicateBuffers()
 {
+    if (!cfg.enableBackupCH)
+        return;
+
     for (auto& c : clusters)
     {
         if (c.backup < 0)
@@ -188,6 +210,9 @@ World::ReplicateBuffers()
 bool
 World::PromoteBackup(uint32_t clusterId, double now)
 {
+    if (!cfg.enableBackupCH)
+        return false;
+
     Cluster& c = clusters.at(clusterId);
 
     // A cluster without a backup cannot fail over.
@@ -236,6 +261,9 @@ World::PromoteBackup(uint32_t clusterId, double now)
 int32_t
 World::ElectBackup(uint32_t clusterId, double now)
 {
+    if (!cfg.enableBackupCH)
+        return -1;
+
     Cluster& c = clusters.at(clusterId);
     c.backup = -1;
     c.backupBuffer = 0;

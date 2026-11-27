@@ -1,6 +1,6 @@
+
 // Simulation configuration. Every field is a command-line argument of the same name;
 // experiments/run_experiment.py passes the [simulation] table of a TOML config verbatim.
-// Units are part of each description and are SI unless stated (s, m, m/s, W, J, A, dBm, dB).
 #ifndef WSN_UAV_CONFIG_H
 #define WSN_UAV_CONFIG_H
 
@@ -93,6 +93,8 @@ struct SimConfig
     double planTimeout = 0.5;   // CH waits this long after DONE for a PLAN [s]
 
     // CH reliability and failover (paper Sec. III-F/G)
+    bool enableBackupCH = true; // false for A7: disable backup CH functionality
+    bool failoverOnMissedMeeting = false; // true for A8: trigger failover on missed UAV meeting
     double chFailureRate = 0.0;       // random primary failure hazard [1/s]
     double heartbeatInterval = 1.0;   // primary -> backup heartbeat interval [s]
     uint32_t missedHeartbeats = 3;    // m_h: consecutive misses before takeover
@@ -101,10 +103,13 @@ struct SimConfig
     double retryListen = 10.0;        // listen time of each retry window [s]; < retryInterval
     uint32_t maxMissedRetries = 5;    // M_max: misses before DISCOVERY
 
+    // Routing ablation
+    bool enableSurveyLap = true; // false for A9: disable initial survey lap
+
     void Register(ns3::CommandLine& cmd)
     {
         cmd.AddValue("topologyDir", "Directory with nodes.csv and clusters.csv (required)", topologyDir);
-        cmd.AddValue("outDir", "Output directory for metrics files", outDir);
+        cmd.AddValue("outDir", "Directory for metrics files", outDir);
         cmd.AddValue("seed", "ns-3 run number for all random streams", seed);
         cmd.AddValue("simTime", "Simulated mission horizon [s]", simTime);
         cmd.AddValue("energyCheckInterval", "Period of the node-death check [s]", energyCheckInterval);
@@ -158,13 +163,19 @@ struct SimConfig
         cmd.AddValue("dutyPeriod", "Duty-cycle / discovery period T_b [s]", dutyPeriod);
         cmd.AddValue("dutyListen", "Listen time per duty period t_l [s]", dutyListen);
         cmd.AddValue("wakeHalfWidth", "Fixed scheduled wake-window half-width w [s]", wakeHalfWidth);
-        cmd.AddValue("adaptiveLateMargin", "Adaptive late-arrival wake margin [s]", adaptiveLateMargin);
+        cmd.AddValue("adaptiveLateMargin", "Adaptive late window margin [s]", adaptiveLateMargin);
         cmd.AddValue("adaptiveWindow", "Late window from the lateness quantile (else wakeHalfWidth)",
                      adaptiveWindow);
         cmd.AddValue("etaQuantile", "Empirical lateness percentile (0.80–0.99)", etaQuantile);
-        cmd.AddValue("etaMinSamples", "Minimum observations for adaptive ETA margin", etaMinSamples);
+        cmd.AddValue("etaMinSamples", "Minimum observations before adaptive estimation", etaMinSamples);
         cmd.AddValue("wDrift", "Maximum absolute per-CH clock offset [s]", wDrift);
         cmd.AddValue("planTimeout", "CH wait for PLAN after upload [s]", planTimeout);
+        cmd.AddValue("enableBackupCH",
+                     "Enable backup CH election, replication and failover",
+                     enableBackupCH);
+        cmd.AddValue("failoverOnMissedMeeting",
+                     "Trigger primary failover on a missed UAV meeting (A8)",
+                     failoverOnMissedMeeting);
         cmd.AddValue("chFailureRate", "Primary CH random failure hazard [1/s]", chFailureRate);
         cmd.AddValue("heartbeatInterval", "Primary-to-backup heartbeat interval [s]", heartbeatInterval);
         cmd.AddValue("missedHeartbeats", "Consecutive missed heartbeats before backup takeover m_h", missedHeartbeats);
@@ -172,6 +183,10 @@ struct SimConfig
         cmd.AddValue("retryInterval", "Retry spacing Delta_r [s]", retryInterval);
         cmd.AddValue("retryListen", "Listen time of each retry window [s]", retryListen);
         cmd.AddValue("maxMissedRetries", "Maximum missed retries before DISCOVERY M_max", maxMissedRetries);
+
+        cmd.AddValue("enableSurveyLap",
+                     "Enable the initial fixed survey lap (A9 ablation)",
+                     enableSurveyLap);
     }
 };
 

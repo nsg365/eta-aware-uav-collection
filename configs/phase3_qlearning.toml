@@ -1,0 +1,22 @@
+# Example Q-learning settings. Merge [q_learning] into configs/phase3_ppo.toml
+# or use the separate config for Q-learning-specific hyperparameters.
+[q_learning]
+episodes = 500
+learning_rate = 0.15
+gamma = 0.99
+epsilon_start = 1.0
+epsilon_end = 0.05
+epsilon_decay_steps = 100000
+
+[q_learning.bins]
+mission_time = [0.2, 0.4, 0.6, 0.8]
+uav_x = [-0.5, 0.0, 0.5]
+uav_y = [-0.5, 0.0, 0.5]
+nearest_buffer = [0.25, 0.5, 1.0, 2.0]
+nearest_energy = [0.2, 0.4, 0.6, 0.8]
+nearest_age = [0.25, 0.5, 1.0, 2.0]
+nearest_slack = [-1.0, -0.25, 0.25, 1.0]
+nearest_misses = [0.0, 0.2, 0.6]
+never_contacted_fraction = [0.0, 0.1, 0.3, 0.6]
+nearest_eta_risk = [0.0, 0.05, 0.15, 0.4]
+cluster_count = [8, 16, 24, 32]

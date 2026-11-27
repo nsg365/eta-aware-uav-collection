@@ -1,0 +1,31 @@
+
+[experiment]
+name = "a9_smoke"
+num_sensors = [100]
+seeds = [1]
+
+[topology]
+area_m = 500.0
+sensor_range_m = 80.0
+dbscan_kappa = 0.8
+dbscan_min_samples = 3
+uav_range_m = 30.0
+alpha = 0.5
+min_candidates = 2
+depot_x = 0.0
+depot_y = 0.0
+
+[simulation]
+simTime = 7200.0
+wakeMode = "scheduled"
+uavDelayProb = 0.1
+uavDelayMin = 10.0
+uavDelayMax = 30.0
+chFailureRate = 2.78e-5
+adaptiveWindow = true
+enableSurveyLap = false
+
+[[variant]]
+name = "ppo_A4_no_survey"
+routing = "ppo"
+model = "models/phase3_ppo/A4_ppo-scoring_ws.zip"

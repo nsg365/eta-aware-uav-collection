@@ -64,6 +64,7 @@ struct Cluster
 
     // Primary failure detection
     uint32_t missedHeartbeatCount = 0;
+    uint32_t lastMissedMeetingCount = 0; // A8: missed meetings already processed as failover signals
     bool primaryFailureDetected = false;
     double primaryFailureDetectedTime = -1.0;
     uint64_t bufferLostAtFailure = 0;

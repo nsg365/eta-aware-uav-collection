@@ -64,10 +64,18 @@ def run_one(job: dict) -> dict:
     out.mkdir(parents=True, exist_ok=True)
     (out / "run_config.json").write_text(json.dumps(job, indent=2))
     extra = {}
-    if job["simulation"].get("routing") == "ppo":
-        # A trained Phase 3 policy drives the UAV through routing/env.py.
+    # if job["simulation"].get("routing") == "ppo":
+    #     # A trained Phase 3 policy drives the UAV through routing/env.py.
+    #     from routing.evaluate import run_ppo
+    #     extra = {"ppo": run_ppo(job["simulation"]["model"], job["simulation"])}
+    if job["simulation"].get("routing") in ("ppo", "q_learning"):
         from routing.evaluate import run_ppo
-        extra = {"ppo": run_ppo(job["simulation"]["model"], job["simulation"])}
+        extra = {
+            "policy": run_ppo(
+                job["simulation"]["model"],
+                job["simulation"]
+            )
+        }
     else:
         cmd = [str(ns3_binary())] + sim_args(job["simulation"])
         proc = subprocess.run(cmd, capture_output=True, text=True, cwd=REPO)

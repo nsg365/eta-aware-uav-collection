@@ -1,3 +1,4 @@
+
 #ifndef WSN_UAV_ROUTING_POLICY_H
 #define WSN_UAV_ROUTING_POLICY_H
 
@@ -62,7 +63,8 @@ class RoutingPolicy
         return m_previousCluster != UINT32_MAX &&
                m_previousPreviousCluster == candidate;
     }
-        // Visit never-contacted clusters before exploiting known cluster data.
+
+    // Visit never-contacted clusters before exploiting known cluster data.
     uint32_t SelectUncontacted(const World& w,
                                const std::vector<ClusterBelief>& beliefs,
                                double currentX,
@@ -140,67 +142,71 @@ class NearestFeasiblePolicy : public RoutingPolicy
 {
   public:
     uint32_t Next(const World& w,
-              const std::vector<ClusterBelief>& beliefs,
-              double currentX,
-              double currentY,
-              uint32_t currentCluster,
-              double halfLapThreshold) override
-{
-    const uint32_t unexplored = SelectUncontacted(w, beliefs, currentX, currentY, currentCluster);
-    if (unexplored != UINT32_MAX)
+                  const std::vector<ClusterBelief>& beliefs,
+                  double currentX,
+                  double currentY,
+                  uint32_t currentCluster,
+                  double halfLapThreshold) override
     {
-        Remember(unexplored);
-        return unexplored;
-    }
-    uint32_t bestFeasible = UINT32_MAX;
-    uint32_t longestUnvisited = UINT32_MAX;
+        const uint32_t unexplored =
+            SelectUncontacted(w, beliefs, currentX, currentY, currentCluster);
 
-    double bestDistance = std::numeric_limits<double>::max();
-    double longestContactAge = -1.0;
-    double fallbackDistance = std::numeric_limits<double>::max();
-
-    for (const Cluster& c : w.clusters)
-    {
-        if (c.id == currentCluster)
-            continue;
-
-        const ClusterBelief& belief = beliefs.at(c.id);
-
-        const double dx = c.meetX - currentX;
-        const double dy = c.meetY - currentY;
-        const double distance = std::hypot(dx, dy);
-
-        // Never-contacted clusters are also feasible.
-        const bool feasible =
-            belief.neverContacted ||
-            belief.timeSinceContact >= halfLapThreshold;
-
-        if (feasible && distance < bestDistance)
+        if (unexplored != UINT32_MAX)
         {
-            bestDistance = distance;
-            bestFeasible = c.id;
+            Remember(unexplored);
+            return unexplored;
         }
 
-        // Keep the longest-unvisited cluster as a fallback.
-        if (belief.timeSinceContact > longestContactAge ||
-            (belief.timeSinceContact == longestContactAge &&
-             distance < fallbackDistance))
+        uint32_t bestFeasible = UINT32_MAX;
+        uint32_t longestUnvisited = UINT32_MAX;
+
+        double bestDistance = std::numeric_limits<double>::max();
+        double longestContactAge = -1.0;
+        double fallbackDistance = std::numeric_limits<double>::max();
+
+        for (const Cluster& c : w.clusters)
         {
-            longestContactAge = belief.timeSinceContact;
-            fallbackDistance = distance;
-            longestUnvisited = c.id;
+            if (c.id == currentCluster)
+                continue;
+
+            const ClusterBelief& belief = beliefs.at(c.id);
+
+            const double dx = c.meetX - currentX;
+            const double dy = c.meetY - currentY;
+            const double distance = std::hypot(dx, dy);
+
+            // Never-contacted clusters are also feasible.
+            const bool feasible =
+                belief.neverContacted ||
+                belief.timeSinceContact >= halfLapThreshold;
+
+            if (feasible && distance < bestDistance)
+            {
+                bestDistance = distance;
+                bestFeasible = c.id;
+            }
+
+            // Keep the longest-unvisited cluster as a fallback.
+            if (belief.timeSinceContact > longestContactAge ||
+                (belief.timeSinceContact == longestContactAge &&
+                 distance < fallbackDistance))
+            {
+                longestContactAge = belief.timeSinceContact;
+                fallbackDistance = distance;
+                longestUnvisited = c.id;
+            }
         }
+
+        const uint32_t selected =
+            (bestFeasible != UINT32_MAX) ? bestFeasible : longestUnvisited;
+
+        NS_ABORT_MSG_IF(selected == UINT32_MAX,
+                        "Nearest-feasible policy found no cluster other than current cluster");
+
+        Remember(selected);
+        return selected;
     }
 
-    const uint32_t selected =
-        (bestFeasible != UINT32_MAX) ? bestFeasible : longestUnvisited;
-
-    NS_ABORT_MSG_IF(selected == UINT32_MAX,
-                    "Nearest-feasible policy found no cluster other than current cluster");
-
-    Remember(selected);
-    return selected;
-}
     bool CommitsToOrder() const override
     {
         return false;
@@ -226,6 +232,7 @@ class DataGreedyPolicy : public RoutingPolicy
             Remember(unexplored);
             return unexplored;
         }
+
         uint32_t best = UINT32_MAX;
         uint32_t bestAlternative = UINT32_MAX;
         double bestData = -1.0;
@@ -279,7 +286,8 @@ class EnergyDataPolicy : public RoutingPolicy
                   uint32_t currentCluster,
                   double halfLapThreshold) override
     {
-        const uint32_t unexplored = SelectUncontacted(w, beliefs, currentX, currentY, currentCluster);
+        const uint32_t unexplored =
+            SelectUncontacted(w, beliefs, currentX, currentY, currentCluster);
 
         if (unexplored != UINT32_MAX)
         {
@@ -351,8 +359,9 @@ class EnergyDataPolicy : public RoutingPolicy
 };
 
 // Decisions come from an outside process (Phase 3 PPO, routing/env.py) over two pipes.
-// The first K decisions are the fixed survey lap (proposal Algorithm 1); after that, at every
-// decision the policy writes one line
+// When enabled, the first K decisions are the fixed survey lap (proposal Algorithm 1).
+// When disabled (A9), PPO makes a routing decision from the very first visit.
+// At every PPO decision the policy writes one line
 //   D now current x y | totals | K x (cluster features)
 // and reads back "<cluster id> [promise factor]" (factor defaults to 1). At the end of the
 // mission it writes "E | totals".
@@ -377,10 +386,13 @@ class ExternalPolicy : public RoutingPolicy
                   double) override
     {
         m_factor = 1.0;
-        if (m_decisions < w.tourOrder.size())
+
+        // A9: skip the mandatory initial survey lap when disabled.
+        if (w.cfg.enableSurveyLap && m_decisions < w.tourOrder.size())
         {
             return w.tourOrder[m_decisions++];
         }
+
         m_decisions++;
         Open(w);
 
@@ -392,6 +404,7 @@ class ExternalPolicy : public RoutingPolicy
                      currentY);
         WriteTotals(w);
         std::fprintf(m_out, " |");
+
         for (const Cluster& c : w.clusters)
         {
             const ClusterBelief& b = beliefs.at(c.id);
@@ -408,23 +421,29 @@ class ExternalPolicy : public RoutingPolicy
                          b.neverContacted ? 1 : 0,
                          b.lateQuantile);
         }
+
         std::fprintf(m_out, "\n");
         std::fflush(m_out);
 
         char line[64];
         NS_ABORT_MSG_IF(!std::fgets(line, sizeof(line), m_in), "external routing: bridge closed");
+
         char* end = nullptr;
         const long k = std::strtol(line, &end, 10);
+
         NS_ABORT_MSG_IF(end == line || k < 0 || static_cast<size_t>(k) >= w.clusters.size() ||
                             static_cast<uint32_t>(k) == currentCluster,
                         "external routing: invalid decision '" << line << "'");
+
         char* rest = end;
         const double factor = std::strtod(end, &rest);
+
         if (rest != end)
         {
             NS_ABORT_MSG_IF(!(factor > 0.0), "external routing: invalid promise factor '" << line << "'");
             m_factor = factor;
         }
+
         return static_cast<uint32_t>(k);
     }
 
@@ -432,8 +451,9 @@ class ExternalPolicy : public RoutingPolicy
     {
         if (!m_out)
         {
-            return; // the horizon ended during the survey lap
+            return; // no PPO decision was made during the episode
         }
+
         std::fprintf(m_out, "E |");
         WriteTotals(w);
         std::fprintf(m_out, "\n");
@@ -457,10 +477,13 @@ class ExternalPolicy : public RoutingPolicy
         {
             return;
         }
+
         NS_ABORT_MSG_IF(w.cfg.bridgeFdIn < 0 || w.cfg.bridgeFdOut < 0,
                         "routing=external needs --bridgeFdIn and --bridgeFdOut");
+
         m_in = fdopen(w.cfg.bridgeFdIn, "r");
         m_out = fdopen(w.cfg.bridgeFdOut, "w");
+
         NS_ABORT_MSG_IF(!m_in || !m_out, "external routing: cannot open bridge descriptors");
     }
 
@@ -469,6 +492,7 @@ class ExternalPolicy : public RoutingPolicy
     {
         uint64_t delivered = 0, generated = 0;
         uint32_t missed = 0, retried = 0;
+
         for (const Cluster& c : w.clusters)
         {
             delivered += c.delivered;
@@ -476,7 +500,9 @@ class ExternalPolicy : public RoutingPolicy
             missed += c.windowsMissed;
             retried += c.retrySuccesses;
         }
+
         double wifiJ = 0.0;
+
         for (const Sensor& s : w.sensors)
         {
             if (s.wifiEnergy)
@@ -484,6 +510,7 @@ class ExternalPolicy : public RoutingPolicy
                 wifiJ += s.wifiEnergy->GetTotalEnergyConsumption();
             }
         }
+
         std::fprintf(m_out,
                      " %llu %llu %u %u %.6f %.6f %.6f",
                      static_cast<unsigned long long>(delivered),

@@ -37,8 +37,10 @@ ClusterHeadApp::StartApplication()
     m_socket->Bind(InetSocketAddress(Ipv4Address::GetAny(), CH_PORT));
     m_socket->SetRecvCallback(MakeCallback(&ClusterHeadApp::Receive, this));
 
-    if (m_w->cfg.wakeMode == "always_on")
+    if (m_w->cfg.wakeMode == "always_on" ||
+        !m_w->cfg.enableSurveyLap)
     {
+        // A9: keep CH awake during initialization until first UAV contact.
         Wake();
     }
     else
