@@ -1,6 +1,6 @@
 # Phase 3 models on Prakruthi's Gaussian-hotspot networks (configs/phase2_gaussian_*.toml),
-# 100/1000/2000 sensors, no extra UAV delay. The PPO models were trained on 100-sensor uniform
-# networks and are used as they are (no retraining).
+# 100/1000/2000 sensors, UAV speed uniform 9-11 m/s, no extra UAV delay. The PPO models were
+# trained on 100-sensor uniform networks and are used as they are (no retraining).
 #   python3 -m experiments.run_experiment configs/phase3_gaussian_scaling.toml -j 8
 #   python3 -m analysis.aggregate results/phase3_gaussian_scaling/runs.csv
 
@@ -29,7 +29,8 @@ simTime = 7200.0
 wakeMode = "scheduled"
 etaMinSamples = 5
 adaptiveLateMargin = 20.0
-uavDelayProb = 0.0              # sir's setting: no extra delay, speed noise only
+uavSpeedJitter = 0.1            # sir's setting: UAV speed uniform 9-11 m/s per leg
+uavDelayProb = 0.0              # and no extra delay
 chFailureRate = 2.78e-5
 
 [[variant]]

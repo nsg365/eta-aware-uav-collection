@@ -32,17 +32,16 @@ SEED = 3
 METRICS = ["data.pdr", "wake.meeting_success_rate", "energy.primary_ch_mean_J"]
 
 STRESS = "speed std 1 m/s, 10 % of flight legs delayed by 10–30 s, random cluster-head failures"
-SIR = "speed std 1 m/s only (no extra delays)"
 SIR_EXACT = "speed uniform 9–11 m/s per leg, no extra delays (sir's setting)"
 # (experiment, num_sensors, menu label, deployment text, noise text, tour variant name)
 DEPLOYMENTS = [
     ("phase3_eval", 100, "Uniform · 100 sensors", "uniform random", STRESS, "tour_adaptive"),
     ("phase3_gaussian_scaling", 100, "Gaussian hotspots · 100 sensors", "4 Gaussian hotspots",
-     SIR + ", cluster-head failures", "tour"),
+     SIR_EXACT + ", cluster-head failures", "tour"),
     ("phase3_gaussian_scaling", 1000, "Gaussian hotspots · 1000 sensors", "4 Gaussian hotspots",
-     SIR + ", cluster-head failures", "tour"),
+     SIR_EXACT + ", cluster-head failures", "tour"),
     ("phase3_gaussian_scaling", 2000, "Gaussian hotspots · 2000 sensors", "4 Gaussian hotspots",
-     SIR + ", cluster-head failures", "tour"),
+     SIR_EXACT + ", cluster-head failures", "tour"),
     ("phase3_ch_sweep_05", 1000, "CH sweep · about 6 clusters", "3 Gaussian hotspots, clusters capped at 300 sensors", SIR_EXACT, "tour"),
     ("phase3_ch_sweep_10", 1000, "CH sweep · about 10 clusters", "5 Gaussian hotspots, clusters capped at 150 sensors", SIR_EXACT, "tour"),
     ("phase3_ch_sweep_15", 1000, "CH sweep · about 15 clusters", "5 Gaussian hotspots, clusters capped at 100 sensors", SIR_EXACT, "tour"),

@@ -238,29 +238,32 @@ are the retrained numbers.
 - Where the tour is not close to optimal (e.g. a different wake scheme, or no promises), PPO
   might gain. Not tested.
 
-## 10. Follow-up: the models on Prakruthi's Gaussian-hotspot networks (19 Nov)
+## 10. Follow-up: the models on Prakruthi's Gaussian-hotspot networks (19 Nov, rerun 27 Nov)
 
 The A1–A4 and A4P models (trained on 100-sensor uniform networks) were run unchanged on the
 Gaussian-hotspot networks of `configs/phase2_gaussian_*.toml` (4 hotspots, 100/1000/2000
-sensors, 10 networks each), with no extra UAV delay (the noise agreed after the review meeting)
-and the usual CH failures. Config: `configs/phase3_gaussian_scaling.toml`.
+sensors, 10 networks each). Noise is sir's setting: UAV speed uniform 9–11 m/s per leg
+(`uavSpeedJitter = 0.1`), no extra UAV delay, plus the usual CH failures.
+Config: `configs/phase3_gaussian_scaling.toml`.
 
 | Sensors (clusters) | Tour PDR / on-time | Best other baseline PDR | A4 PDR / on-time | A3 PDR / on-time |
 |---|---|---|---|---|
-| 100 (4.4) | 0.993 / 1.000 | 0.993 (nearest feasible) | 0.993 / 0.999 | 0.993 / 0.949 |
-| 1000 (5.7) | 0.853 / 1.000 | 0.846 (nearest feasible) | 0.852 / 0.998 | 0.821 / 0.939 |
-| 2000 (7.0) | 0.602 / 0.999 | 0.601 (nearest feasible) | 0.601 / 0.999 | 0.578 / 0.958 |
+| 100 (4.4) | 0.994 / 1.000 | 0.993 (nearest feasible) | 0.994 / 1.000 | 0.992 / 0.954 |
+| 1000 (5.7) | 0.857 / 1.000 | 0.850 (nearest feasible) | 0.857 / 1.000 | 0.827 / 0.951 |
+| 2000 (7.0) | 0.605 / 1.000 | 0.604 (nearest feasible) | 0.603 / 1.000 | 0.580 / 0.951 |
 
 - The models carry over to these networks without retraining. A4 matches the tour at every
-  size (PDR difference −0.1 points or less).
+  size (PDR difference 0.2 points or less).
 - The PDR drop at 1000/2000 sensors is buffer overflow (tour: 14 % and 39 % of the data), the
   same for every policy that keeps its promises. No visiting order fixes it, since each CH
   serves 170–290 sensors and its 2000-reading buffer fills before the UAV can return.
-- Data greedy and energy-data score fall further behind as the network grows (PDR 0.50 and
-  0.45 at 2000 sensors).
-- Out of distribution, the risk term matters: A3 (no risk term) loses 3.2 ± 2.3 points of PDR
-  at 1000 sensors and keeps only 94 % of its meetings, while A4 stays with the tour. A4P is
-  slightly worse than A4 (−0.6 points).
+- Data greedy and energy-data score fall further behind as the network grows (PDR 0.48 and
+  0.43 at 2000 sensors).
+- Out of distribution, the risk term matters: A3 (no risk term) loses 3.0 ± 2.4 points of PDR
+  at 1000 sensors and keeps only 95 % of its meetings, while A4 stays with the tour. A4P is
+  slightly worse than A4 (−0.4 to −0.5 points).
+- The first run of this set (19 Nov) used speed std 1 m/s instead of uniform 9–11 m/s; every
+  PDR moved by under 2.5 points and the conclusions are the same.
 
 ## 11. Follow-up: the models on Prakruthi's CH-count sweep (24 Nov)
 
