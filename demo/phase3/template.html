@@ -110,7 +110,7 @@ pre { margin: 0; font-family: var(--font-data); font-size: 0.85rem; background: 
   <header class="col">
     <p class="eyebrow">MLOWN course project · Phase 3 · Nihar</p>
     <h1>Learning where the drone flies next</h1>
-    <p class="lede">A UAV collects sensor data from cluster heads that only wake up when it promises to arrive. In Phase 3 a PPO agent learned the UAV's next stop, inside the ns-3 simulation. Below is one real two-hour mission on a network the agent never saw in training.</p>
+    <p class="lede">A UAV collects sensor data from cluster heads that only wake up when it promises to arrive. In Phase 3 a PPO agent learned the UAV's next stop, inside the ns-3 simulation. Below are real two-hour missions on networks the agent never saw in training, from 100 uniformly spread sensors to 2000 sensors in hotspots.</p>
     <div class="verdict">
       <span>PPO vs ETA-aware tour: <b>no significant difference</b></span>
       <span>vs best other baseline: <b>+6.5 pts PDR, 3.6× on-time</b></span>
@@ -121,7 +121,12 @@ pre { margin: 0; font-family: var(--font-data); font-size: 0.85rem; background: 
   <section aria-labelledby="replay-h">
     <div class="stack col">
       <h2 id="replay-h">Mission replay</h2>
-      <p class="note">Held-out network 3: 100 sensors, 31 clusters, 500 m × 500 m. Same traffic, delays and failures for all three policies. Rings are meeting points, dots are sensors, the triangle is the UAV. Data counts when a visit ends.</p>
+      <p class="note" id="dep-note"></p>
+      <p class="note">Within a deployment, all three policies see the same network, traffic and noise. Rings are meeting points, dots are sensors, the triangle is the UAV. Data counts when a visit ends. The PPO model is the same one everywhere, trained only on 100-sensor uniform networks.</p>
+    </div>
+    <div class="controls">
+      <label for="dep" class="eyebrow">Deployment</label>
+      <select id="dep"></select>
     </div>
     <div class="controls">
       <button id="play" class="primary" type="button">Play</button>
@@ -139,7 +144,7 @@ pre { margin: 0; font-family: var(--font-data); font-size: 0.85rem; background: 
 
   <section aria-labelledby="res-h">
     <div class="stack col">
-      <h2 id="res-h">Results on 10 held-out networks</h2>
+      <h2 id="res-h">Results on 10 held-out uniform networks (100 sensors)</h2>
       <p class="note">Mean with 95 % confidence interval over network seeds 1–10. Training used seeds 101–300. Stress: 10 % of flight legs delayed by 10–30 s, random cluster-head failures.</p>
     </div>
     <div class="charts" id="charts"></div>
@@ -213,7 +218,7 @@ python3 -m analysis.aggregate results/phase3_eval/runs.csv</pre>
 <script>
 const DATA = __DATA__;
 const POLICIES = [
-  { key: "tour_adaptive", name: "ETA-aware tour", color: "--tour" },
+  { key: "tour", name: "ETA-aware tour", color: "--tour" },
   { key: "ppo_A4", name: "ER-PPO (A4)", color: "--ppo" },
   { key: "data_greedy", name: "Data greedy", color: "--greedy" },
 ];
@@ -226,14 +231,8 @@ function readColors() {
 }
 readColors();
 
-// per policy: arrays for fast lookup
-const runs = POLICIES.map(p => {
-  const r = DATA.runs[p.key];
-  const v = r.visits; // [cluster, depart, arrive, end, readings]
-  const cum = []; let s = 0;
-  for (const x of v) { s += x[4]; cum.push(s); }
-  return { ...p, r, v, cum };
-});
+const runs = POLICIES.map(p => ({ ...p }));
+let DEP = DATA.deployments[0];
 
 const mapsEl = document.getElementById("maps");
 for (const p of runs) {
@@ -247,16 +246,36 @@ for (const p of runs) {
       <div><span>Visits</span><b data-k="visits">0</b></div>
       <div><span>Hovering</span><b data-k="hover">0 s</b></div>
     </div>
-    <p class="final">Whole mission: PDR <b>${p.r.pdr.toFixed(3)}</b> · on-time <b>${Math.round(p.r.ontime * 100)} %</b> · CH energy <b>${Math.round(p.r.chJ)} J</b></p>`;
+    <p class="final"></p>`;
   mapsEl.appendChild(el);
   p.canvas = el.querySelector("canvas");
   p.ctx = p.canvas.getContext("2d");
   p.out = Object.fromEntries([...el.querySelectorAll("[data-k]")].map(b => [b.dataset.k, b]));
+  p.final = el.querySelector(".final");
 }
+
+// Load one deployment into the three maps: arrays for fast lookup, plus the text around them.
+function setDeployment(i) {
+  DEP = DATA.deployments[i];
+  for (const p of runs) {
+    p.r = DEP.runs[p.key];
+    p.v = p.r.visits; // [cluster, depart, arrive, end, readings]
+    p.cum = []; let s = 0;
+    for (const x of p.v) { s += x[4]; p.cum.push(s); }
+    p.final.innerHTML = `Whole mission: PDR <b>${p.r.pdr.toFixed(3)}</b> · on-time <b>${Math.round(p.r.ontime * 100)} %</b> · CH energy <b>${Math.round(p.r.chJ)} J</b>`;
+  }
+  const m = DEP.mean, pct = v => (v * 100).toFixed(1) + " %";
+  document.getElementById("dep-note").innerHTML =
+    `Held-out network ${DATA.seed}: ${DEP.sensors.toLocaleString()} sensors, ${DEP.layout}, ${DEP.clusters.length} clusters, 500 m × 500 m. Noise: ${DEP.noise}. ` +
+    `Mean PDR over all ${DEP.seeds} networks of this deployment: tour <b>${pct(m.tour.pdr)}</b>, ER-PPO <b>${pct(m.ppo_A4.pdr)}</b>, data greedy <b>${pct(m.data_greedy.pdr)}</b>.`;
+}
+const depSel = document.getElementById("dep");
+DATA.deployments.forEach((d, i) => depSel.add(new Option(d.label, i)));
+setDeployment(0);
 
 const SPAN = 500, PAD = 18;
 function toPx(x, y, size) { const s = (size - 2 * PAD) / SPAN; return [PAD + x * s, size - PAD - y * s]; }
-function meet(c) { return DATA.clusters[c]; }
+function meet(c) { return DEP.clusters[c]; }
 
 function indexAt(v, t) { // last visit with depart <= t
   let lo = 0, hi = v.length - 1, ans = -1;
@@ -284,9 +303,10 @@ function draw(p, t) {
     const [a0, b0] = toPx(0, m, size), [a1, b1] = toPx(SPAN, m, size);
     ctx.beginPath(); ctx.moveTo(a0, b0); ctx.lineTo(a1, b1); ctx.stroke();
   }
-  // sensors
-  ctx.fillStyle = colors["--muted"]; ctx.globalAlpha = 0.55;
-  for (const n of DATA.nodes) { const [x, y] = toPx(n[0], n[1], size); ctx.fillRect(x - 1.5, y - 1.5, 3, 3); }
+  // sensors (smaller and fainter when there are many)
+  const big = DEP.nodes.length > 300, d = big ? 2 : 3;
+  ctx.fillStyle = colors["--muted"]; ctx.globalAlpha = big ? 0.35 : 0.55;
+  for (const n of DEP.nodes) { const [x, y] = toPx(n[0], n[1], size); ctx.fillRect(x - d / 2, y - d / 2, d, d); }
   ctx.globalAlpha = 1;
   const i = indexAt(p.v, t);
   const col = colors[p.color];
@@ -302,7 +322,7 @@ function draw(p, t) {
   ctx.globalAlpha = 1;
   // meeting points
   const here = i >= 0 ? posAt(p, i, t) : null;
-  DATA.clusters.forEach((m, c) => {
+  DEP.clusters.forEach((m, c) => {
     const [x, y] = toPx(m[0], m[1], size);
     const active = here && here.hovering && here.c === c;
     ctx.beginPath(); ctx.arc(x, y, active ? 11 : 6, 0, Math.PI * 2);
@@ -351,6 +371,7 @@ playBtn.addEventListener("click", () => {
   playing = true; last = 0; playBtn.textContent = "Pause"; requestAnimationFrame(frame);
 });
 scrub.addEventListener("input", () => { t = Number(scrub.value); render(); });
+depSel.addEventListener("change", () => { setDeployment(Number(depSel.value)); render(); });
 
 // results charts
 const LABELS = {

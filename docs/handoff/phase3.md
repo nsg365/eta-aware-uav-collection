@@ -261,3 +261,33 @@ and the usual CH failures. Config: `configs/phase3_gaussian_scaling.toml`.
 - Out of distribution, the risk term matters: A3 (no risk term) loses 3.2 ± 2.3 points of PDR
   at 1000 sensors and keeps only 94 % of its meetings, while A4 stays with the tour. A4P is
   slightly worse than A4 (−0.6 points).
+
+## 11. Follow-up: the models on Prakruthi's CH-count sweep (24 Nov)
+
+Same models, unchanged, on Prakruthi's CH-count sweep (`scripts/run_ch_sweep.py`,
+`configs/ch_sweep_params.json`): 1000 sensors, Gaussian hotspots, cluster size capped so the
+networks have about 6, 10, 15 and 20 clusters, 10 networks each. Noise is sir's setting: UAV
+speed uniform 9–11 m/s per leg (`uavSpeedJitter = 0.1`), no extra delays, no CH failures.
+Configs: `configs/phase3_ch_sweep_05/10/15/20.toml` (her networks plus the PPO variants).
+Plots: `python3 scripts/plot_ch_sweep_ppo.py`.
+
+PDR (%), mean of the 10 networks:
+
+| Clusters (median) | Tour | Nearest feasible | Data greedy | Energy-data score | A4 | A4P | A3 |
+|---|---|---|---|---|---|---|---|
+| 6 | 98.7 | 98.7 | 97.0 | 96.9 | 98.7 | 98.3 | 96.0 |
+| 10 | 98.9 | 98.9 | 79.8 | 66.4 | 99.0 | 98.9 | 98.7 |
+| 15 | 98.8 | 96.9 | 80.1 | 63.9 | 98.7 | 98.7 | 98.5 |
+| 20 | 98.1 | 77.7 | 72.5 | 55.8 | 97.9 | 98.0 | 97.0 |
+
+- A4 and A4P stay within 0.4 points of the tour at every cluster count (paired difference,
+  95 % interval includes zero or is under half a point). The tour keeps 100 % of its meetings,
+  A4 98.5–100 %.
+- The other baselines fall apart as clusters go up: at 20 clusters data greedy keeps 53 % of
+  its meetings and energy-data score 41 %, and nearest feasible starts skipping far clusters.
+- UAV total energy is nearly flat (1090–1140 kJ) because the UAV flies or hovers for the whole
+  run, so the plots also show UAV energy per delivered reading: about 1.55 J for the tour and
+  PPO at every cluster count, 2.1–2.8 J for the other baselines at 15–20 clusters.
+- A3 (no risk term) is again the weakest PPO variant, 1–2.6 points behind at 6 and 20 clusters.
+- The same sweep with the older noise (speed std 1 m/s) gave the same picture; every number
+  moved by under 2 points.
