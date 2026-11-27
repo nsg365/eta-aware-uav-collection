@@ -1,0 +1,84 @@
+# Event bursts (the scenario where the tour cannot react): sir's noise (UAV speed uniform 9-11 m/s,
+# no extra delays, CH failures) plus 4 bursts per hour, in each of which one random cluster's
+# sensors read 20x faster for 30 min. Uniform networks, 100 sensors. Only A4P is trained: it is
+# A4 plus a choice of promise length, which lets it promise a quick return to a bursting cluster
+# (here 0.5x to 1.5x of one lap; configs/phase3_ppo.toml allowed 0.75x to 1.5x).
+#
+#   python3 -m routing.train configs/phase3_ppo_bursts.toml --arch scoring --warm-start --variant A4P
+#
+# Saved as models/phase3_ppo_bursts/A4P_ppo-scoring_ws.zip plus .json. Evaluation:
+# configs/phase3_bursts_eval.toml.
+
+[train]
+name = "phase3_ppo_bursts"
+num_sensors = 100
+train_seeds = [101, 300]      # inclusive range of network seeds; disjoint from evaluation seeds
+eval_seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+timesteps = 300_000
+n_envs = 8
+
+[ppo]
+learning_rate = 3e-4
+n_steps = 512                 # per env, so 4096 decisions per update with 8 envs
+batch_size = 256
+n_epochs = 10
+gamma = 0.99                  # per decision; one decision is about 14 s of mission time
+gae_lambda = 0.95
+ent_coef = 0.01
+net_arch = [256, 256]
+
+[dqn]                         # routing/dqn.py (--algo dqn)
+lr = 1e-4
+gamma = 0.99
+n_step = 3
+buffer_size = 200_000
+batch_size = 256
+learning_starts = 5_000
+updates_per_step = 1          # gradient steps per vector step (n_envs decisions)
+tau = 0.005
+eps_start = 1.0
+eps_end = 0.05
+eps_fraction = 0.3
+
+[warm_start]                  # --warm-start
+demo_steps = 50_000           # tour decisions recorded before training
+epochs = 10                   # PPO: behaviour-cloning passes over them
+lr = 1e-3
+batch_size = 256
+
+[reward]                      # R = beta_d*R_D - beta_e*R_UAV - beta_m*R_miss - beta_c*R_CH - beta_r*R_risk
+beta_d = 1.0
+beta_e = 0.2
+beta_m = 1.0
+beta_c = 0.25                 # R_CH in units of one CH listening through one fixed window
+
+[simulation]
+simTime = 7200.0
+wakeMode = "scheduled"
+uavSpeedJitter = 0.1
+uavDelayProb = 0.0
+chFailureRate = 2.78e-5
+burstsPerHour = 4.0
+burstDuration = 1800.0
+burstMultiplier = 20.0
+
+[[variant]]
+name = "A4P"                  # A4 + the policy also chooses each promise length
+adaptiveWindow = true
+risk_in_obs = true
+beta_r = 0.5
+promise_factors = [0.5, 0.75, 1.0, 1.5]
+t0 = 15.0
+bc_weight = 1.0
+shaping = true
+
+[[variant]]
+name = "A4Pb"                 # as A4P, but the copying step fades out by 100k of 300k decisions
+adaptiveWindow = true
+risk_in_obs = true
+beta_r = 0.5
+promise_factors = [0.5, 0.75, 1.0, 1.5]
+t0 = 15.0
+bc_weight = 1.0
+bc_decay_steps = 100_000
+shaping = true

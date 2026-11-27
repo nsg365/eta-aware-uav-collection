@@ -33,7 +33,8 @@ METRICS = ["data.pdr", "wake.meeting_success_rate", "energy.primary_ch_mean_J"]
 
 STRESS = "speed std 1 m/s, 10 % of flight legs delayed by 10–30 s, random cluster-head failures"
 SIR_EXACT = "speed uniform 9–11 m/s per leg, no extra delays (sir's setting)"
-# (experiment, num_sensors, menu label, deployment text, noise text, tour variant name)
+# (experiment, num_sensors, menu label, deployment text, noise text, tour variant name[, PPO
+#  variant, PPO display name]; PPO defaults to ppo_A4)
 DEPLOYMENTS = [
     ("phase3_eval", 100, "Uniform · 100 sensors", "uniform random", STRESS, "tour_adaptive"),
     ("phase3_gaussian_scaling", 100, "Gaussian hotspots · 100 sensors", "4 Gaussian hotspots",
@@ -46,22 +47,26 @@ DEPLOYMENTS = [
     ("phase3_ch_sweep_10", 1000, "CH sweep · about 10 clusters", "5 Gaussian hotspots, clusters capped at 150 sensors", SIR_EXACT, "tour"),
     ("phase3_ch_sweep_15", 1000, "CH sweep · about 15 clusters", "5 Gaussian hotspots, clusters capped at 100 sensors", SIR_EXACT, "tour"),
     ("phase3_ch_sweep_20", 1000, "CH sweep · about 20 clusters", "15 Gaussian hotspots, clusters capped at 75 sensors", SIR_EXACT, "tour"),
+    ("phase3_bursts_eval", 100, "Event bursts · 100 sensors",
+     "uniform random, 4 bursts per hour (one cluster reads 20× faster for 30 min)",
+     SIR_EXACT + ", cluster-head failures", "tour", "ppo_A4P_bursts", "PPO A4P (trained on bursts)"),
 ]
 
 
-def deployment(exp: str, n: int, label: str, layout: str, noise: str, tour: str) -> dict | None:
+def deployment(exp: str, n: int, label: str, layout: str, noise: str, tour: str,
+               ppo: str = "ppo_A4", ppo_name: str = "ER-PPO (A4)") -> dict | None:
     run = RESULTS / exp / f"n{n}" / f"s{SEED}"
     if not run.exists():
         return None
     clusters = list(csv.DictReader(open(run / "topology" / "clusters.csv")))
     nodes = list(csv.DictReader(open(run / "topology" / "nodes.csv")))
     d = {
-        "label": label, "layout": layout, "noise": noise, "sensors": n,
+        "label": label, "layout": layout, "noise": noise, "sensors": n, "ppoName": ppo_name,
         "clusters": [[round(float(c["meet_x"]), 1), round(float(c["meet_y"]), 1)] for c in clusters],
         "nodes": [[round(float(x["x"]), 1), round(float(x["y"]), 1)] for x in nodes],
         "runs": {},
     }
-    for key, v in [("tour", tour), ("ppo_A4", "ppo_A4"), ("data_greedy", "data_greedy")]:
+    for key, v in [("tour", tour), ("ppo_A4", ppo), ("data_greedy", "data_greedy")]:
         m = json.loads((run / v / "metrics.json").read_text())
         visits = [[int(r["cluster_id"]), round(float(r["depart_s"]), 1), round(float(r["arrive_s"]), 1),
                    round(float(r["end_s"]), 1), int(float(r["readings"]))]
@@ -75,7 +80,7 @@ def deployment(exp: str, n: int, label: str, layout: str, noise: str, tour: str)
     d["seeds"] = int(runs["run.seed"].nunique())
     d["mean"] = {key: {"pdr": float(runs.loc[runs.variant == v, "data.pdr"].mean()),
                        "ontime": float(runs.loc[runs.variant == v, "wake.meeting_success_rate"].mean())}
-                 for key, v in [("tour", tour), ("ppo_A4", "ppo_A4"), ("data_greedy", "data_greedy")]}
+                 for key, v in [("tour", tour), ("ppo_A4", ppo), ("data_greedy", "data_greedy")]}
     return d
 
 

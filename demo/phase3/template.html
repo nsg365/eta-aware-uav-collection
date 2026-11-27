@@ -122,7 +122,7 @@ pre { margin: 0; font-family: var(--font-data); font-size: 0.85rem; background: 
     <div class="stack col">
       <h2 id="replay-h">Mission replay</h2>
       <p class="note" id="dep-note"></p>
-      <p class="note">Within a deployment, all three policies see the same network, traffic and noise. Rings are meeting points, dots are sensors, the triangle is the UAV. Data counts when a visit ends. The PPO model is the same one everywhere, trained only on 100-sensor uniform networks.</p>
+      <p class="note">Within a deployment, all three policies see the same network, traffic and noise. Rings are meeting points, dots are sensors, the triangle is the UAV. Data counts when a visit ends. Except for the event-burst entry, the PPO model is the same one everywhere (ER-PPO A4), trained only on 100-sensor uniform networks.</p>
     </div>
     <div class="controls">
       <label for="dep" class="eyebrow">Deployment</label>
@@ -239,7 +239,7 @@ for (const p of runs) {
   const el = document.createElement("div");
   el.className = "map";
   el.innerHTML = `
-    <div class="map-head"><h3><span class="swatch" style="background:var(${p.color})"></span>${p.name}</h3></div>
+    <div class="map-head"><h3><span class="swatch" style="background:var(${p.color})"></span><span class="pname">${p.name}</span></h3></div>
     <canvas width="600" height="600" aria-label="${p.name} UAV route"></canvas>
     <div class="live">
       <div><span>Data</span><b data-k="data">0</b></div>
@@ -252,6 +252,7 @@ for (const p of runs) {
   p.ctx = p.canvas.getContext("2d");
   p.out = Object.fromEntries([...el.querySelectorAll("[data-k]")].map(b => [b.dataset.k, b]));
   p.final = el.querySelector(".final");
+  p.title = el.querySelector(".pname");
 }
 
 // Load one deployment into the three maps: arrays for fast lookup, plus the text around them.
@@ -262,12 +263,13 @@ function setDeployment(i) {
     p.v = p.r.visits; // [cluster, depart, arrive, end, readings]
     p.cum = []; let s = 0;
     for (const x of p.v) { s += x[4]; p.cum.push(s); }
+    if (p.key === "ppo_A4") p.title.textContent = DEP.ppoName;
     p.final.innerHTML = `Whole mission: PDR <b>${p.r.pdr.toFixed(3)}</b> · on-time <b>${Math.round(p.r.ontime * 100)} %</b> · CH energy <b>${Math.round(p.r.chJ)} J</b>`;
   }
   const m = DEP.mean, pct = v => (v * 100).toFixed(1) + " %";
   document.getElementById("dep-note").innerHTML =
     `Held-out network ${DATA.seed}: ${DEP.sensors.toLocaleString()} sensors, ${DEP.layout}, ${DEP.clusters.length} clusters, 500 m × 500 m. Noise: ${DEP.noise}. ` +
-    `Mean PDR over all ${DEP.seeds} networks of this deployment: tour <b>${pct(m.tour.pdr)}</b>, ER-PPO <b>${pct(m.ppo_A4.pdr)}</b>, data greedy <b>${pct(m.data_greedy.pdr)}</b>.`;
+    `Mean PDR over all ${DEP.seeds} networks of this deployment: tour <b>${pct(m.tour.pdr)}</b>, ${DEP.ppoName} <b>${pct(m.ppo_A4.pdr)}</b>, data greedy <b>${pct(m.data_greedy.pdr)}</b>.`;
 }
 const depSel = document.getElementById("dep");
 DATA.deployments.forEach((d, i) => depSel.add(new Option(d.label, i)));
