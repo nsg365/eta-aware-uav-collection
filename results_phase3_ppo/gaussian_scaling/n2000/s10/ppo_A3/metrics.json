@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 10, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "external", "num_sensors": 2000, "num_clusters": 7, "topology_dir": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_gaussian_scaling/n2000/s10/topology", "wall_time_s": 196.6984118},
+  "data": {"generated": 1440960, "delivered": 867495, "pdr": 0.6020257328, "overflow": 565330, "overflow_ratio": 0.3923287253, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 0, "in_buffer_at_end": 8135},
+  "reliability": {"primary_failures": 0, "backup_promotions": 0, "failures_no_backup": 0, "failures_backup_dead": 0, "lost_during_failover": 0, "latest_failover_time_s": null, "retry_attempts": 39, "retry_successes": 17, "promise_violations": 17, "retry_exhaustions": 0, "rebootstrap_count": 0},
+  "energy": {"sensor_total_J": 3170.625862, "sensor_mean_J": 1.585312931, "primary_ch_mean_J": 88.21038443, "non_primary_mean_J": 1.281060297, "wifi_total_J": 2033.699146, "ieee802154_total_J": 272.9267168, "baseline_total_J": 864, "jain_cluster_residual": 0.9999984534},
+  "lifetime": {"first_node_death_s": 7200, "first_node_death_censored": true, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 0},
+  "uav": {"distance_m": 64406.97999, "flight_time_s": 6450.844714, "delay_time_s": 0, "hover_time_s": 767.0523008, "flight_energy_J_est": 967626.7071, "hover_energy_J_est": 130398.8911, "visits": 434, "contacts": 434, "failed_contacts": 0, "bytes_per_uav_joule": 25.28159639},
+  "wake": {"windows_scheduled": 434, "windows_opened": 427, "windows_met": 410, "windows_missed": 17, "discovery_contacts": 7, "meeting_success_rate": 0.9601873536, "missed_window_fraction": 0.03981264637, "planned_window_width_s": 40, "mean_window_listen_s": 2.913867462, "scheduled_window_energy_J": 373.2664219, "ch_wifi_awake_fraction": 0.02730434409},
+  "eta": {"n": 427, "mean_signed_error_s": -17.99496713, "mae_s": 20.34020151, "rmse_s": 21.5468481, "late_beyond_window_frac": 0.02341920375}
+}

@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 7, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "external", "num_sensors": 1000, "num_clusters": 11, "topology_dir": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_ch_sweep_10/n1000/s7/topology", "wall_time_s": 116.0803203},
+  "data": {"generated": 719928, "delivered": 708702, "pdr": 0.984406774, "overflow": 2235, "overflow_ratio": 0.003104477114, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 0, "in_buffer_at_end": 8991},
+  "reliability": {"primary_failures": 0, "backup_promotions": 0, "failures_no_backup": 0, "failures_backup_dead": 0, "lost_during_failover": 0, "latest_failover_time_s": null, "retry_attempts": 30, "retry_successes": 19, "promise_violations": 19, "retry_exhaustions": 0, "rebootstrap_count": 0},
+  "energy": {"sensor_total_J": 2890.364798, "sensor_mean_J": 2.890364798, "primary_ch_mean_J": 53.38171821, "non_primary_mean_J": 2.328782505, "wifi_total_J": 2292.498697, "ieee802154_total_J": 165.866101, "baseline_total_J": 432, "jain_cluster_residual": 0.9999946858},
+  "lifetime": {"first_node_death_s": 7200, "first_node_death_censored": true, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 0},
+  "uav": {"distance_m": 59941.75342, "flight_time_s": 6029.715426, "delay_time_s": 0, "hover_time_s": 1187.665504, "flight_energy_J_est": 904457.3139, "hover_energy_J_est": 201903.1356, "visits": 488, "contacts": 488, "failed_contacts": 0, "bytes_per_uav_joule": 20.49825987},
+  "wake": {"windows_scheduled": 488, "windows_opened": 479, "windows_met": 458, "windows_missed": 19, "discovery_contacts": 11, "meeting_success_rate": 0.9601677149, "missed_window_fraction": 0.03983228512, "planned_window_width_s": 40, "mean_window_listen_s": 2.458103335, "scheduled_window_energy_J": 351.7545872, "ch_wifi_awake_fraction": 0.01751560409},
+  "eta": {"n": 477, "mean_signed_error_s": -19.2268652, "mae_s": 21.71946461, "rmse_s": 22.53222305, "late_beyond_window_frac": 0.02725366876}
+}

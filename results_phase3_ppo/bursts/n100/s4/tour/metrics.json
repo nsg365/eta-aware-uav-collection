@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 4, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "tour", "num_sensors": 100, "num_clusters": 31, "topology_dir": "results/phase3_bursts_eval/n100/s4/topology", "wall_time_s": 7.362571},
+  "data": {"generated": 141283, "delivered": 120729, "pdr": 0.8545189442, "overflow": 16674, "overflow_ratio": 0.1180184452, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 1209, "in_buffer_at_end": 2671},
+  "bursts": {"count": 9, "generated": 77740, "overflow": 16647, "overflow_ratio": 0.2141368665},
+  "reliability": {"primary_failures": 9, "backup_promotions": 6, "failures_no_backup": 3, "failures_backup_dead": 0, "lost_during_failover": 0, "latest_failover_time_s": 3635, "retry_attempts": 0, "retry_successes": 0, "promise_violations": 0, "retry_exhaustions": 0, "rebootstrap_count": 0},
+  "energy": {"sensor_total_J": 718.8648309, "sensor_mean_J": 7.188648309, "primary_ch_mean_J": 16.79766096, "non_primary_mean_J": 2.871555669, "wifi_total_J": 543.4338726, "ieee802154_total_J": 134.7283983, "baseline_total_J": 40.70256, "jain_cluster_residual": 0.9998709558},
+  "lifetime": {"first_node_death_s": 324, "first_node_death_censored": false, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 9},
+  "uav": {"distance_m": 52348.17227, "flight_time_s": 5263.398379, "delay_time_s": 0, "hover_time_s": 1940.441807, "flight_energy_J_est": 789509.7568, "hover_energy_J_est": 329875.1072, "visits": 576, "contacts": 541, "failed_contacts": 35, "bytes_per_uav_joule": 3.45129555},
+  "wake": {"windows_scheduled": 541, "windows_opened": 504, "windows_met": 504, "windows_missed": 0, "discovery_contacts": 37, "meeting_success_rate": 1, "missed_window_fraction": 0, "planned_window_width_s": 40, "mean_window_listen_s": 0.4804112702, "scheduled_window_energy_J": 72.63818405, "ch_wifi_awake_fraction": 0.004248380636},
+  "eta": {"n": 513, "mean_signed_error_s": -22.13409608, "mae_s": 22.13409608, "rmse_s": 23.47322479, "late_beyond_window_frac": 0}
+}

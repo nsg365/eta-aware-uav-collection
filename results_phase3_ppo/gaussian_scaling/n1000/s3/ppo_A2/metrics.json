@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 3, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "external", "num_sensors": 1000, "num_clusters": 5, "topology_dir": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_gaussian_scaling/n1000/s3/topology", "wall_time_s": 20.79008729},
+  "data": {"generated": 721170, "delivered": 568595, "pdr": 0.7884340724, "overflow": 147782, "overflow_ratio": 0.2049197831, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 0, "in_buffer_at_end": 4793},
+  "reliability": {"primary_failures": 0, "backup_promotions": 0, "failures_no_backup": 0, "failures_backup_dead": 0, "lost_during_failover": 0, "latest_failover_time_s": null, "retry_attempts": 3, "retry_successes": 3, "promise_violations": 3, "retry_exhaustions": 0, "rebootstrap_count": 0},
+  "energy": {"sensor_total_J": 1489.128131, "sensor_mean_J": 1.489128131, "primary_ch_mean_J": 128.1840941, "non_primary_mean_J": 0.852470011, "wifi_total_J": 914.6651953, "ieee802154_total_J": 142.462936, "baseline_total_J": 432, "jain_cluster_residual": 0.9999980697},
+  "lifetime": {"first_node_death_s": 7200, "first_node_death_censored": true, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 0},
+  "uav": {"distance_m": 70623.23575, "flight_time_s": 7067.684423, "delay_time_s": 0, "hover_time_s": 164.007707, "flight_energy_J_est": 1060152.663, "hover_energy_J_est": 27881.31019, "visits": 340, "contacts": 340, "failed_contacts": 0, "bytes_per_uav_joule": 16.72286017},
+  "wake": {"windows_scheduled": 340, "windows_opened": 335, "windows_met": 332, "windows_missed": 3, "discovery_contacts": 5, "meeting_success_rate": 0.9910447761, "missed_window_fraction": 0.008955223881, "planned_window_width_s": 40, "mean_window_listen_s": 4.939885607, "scheduled_window_energy_J": 496.4585035, "ch_wifi_awake_fraction": 0.04833361173},
+  "eta": {"n": 335, "mean_signed_error_s": -15.17259278, "mae_s": 15.74121842, "rmse_s": 16.34162373, "late_beyond_window_frac": 0.008955223881}
+}

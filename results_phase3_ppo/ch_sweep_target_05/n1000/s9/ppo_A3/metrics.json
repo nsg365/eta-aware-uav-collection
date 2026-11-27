@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 9, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "external", "num_sensors": 1000, "num_clusters": 6, "topology_dir": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_ch_sweep_05/n1000/s9/topology", "wall_time_s": 91.822253},
+  "data": {"generated": 721698, "delivered": 701324, "pdr": 0.971769355, "overflow": 11270, "overflow_ratio": 0.01561595016, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 0, "in_buffer_at_end": 9104},
+  "reliability": {"primary_failures": 0, "backup_promotions": 0, "failures_no_backup": 0, "failures_backup_dead": 0, "lost_during_failover": 0, "latest_failover_time_s": null, "retry_attempts": 58, "retry_successes": 20, "promise_violations": 28, "retry_exhaustions": 4, "rebootstrap_count": 4},
+  "energy": {"sensor_total_J": 2499.214833, "sensor_mean_J": 2.499214833, "primary_ch_mean_J": 90.56100789, "non_primary_mean_J": 1.967654714, "wifi_total_J": 1920.709721, "ieee802154_total_J": 146.5051121, "baseline_total_J": 432, "jain_cluster_residual": 0.9999989059},
+  "lifetime": {"first_node_death_s": 7200, "first_node_death_censored": true, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 0},
+  "uav": {"distance_m": 61699.32881, "flight_time_s": 6185.850124, "delay_time_s": 0, "hover_time_s": 1014.972526, "flight_energy_J_est": 927877.5186, "hover_energy_J_est": 172545.3295, "visits": 460, "contacts": 460, "failed_contacts": 0, "bytes_per_uav_joule": 20.394313},
+  "wake": {"windows_scheduled": 460, "windows_opened": 458, "windows_met": 430, "windows_missed": 28, "discovery_contacts": 10, "meeting_success_rate": 0.9388646288, "missed_window_fraction": 0.06113537118, "planned_window_width_s": 40, "mean_window_listen_s": 2.675934697, "scheduled_window_energy_J": 367.6734274, "ch_wifi_awake_fraction": 0.03174275551},
+  "eta": {"n": 454, "mean_signed_error_s": -18.90306536, "mae_s": 21.67525321, "rmse_s": 23.76492223, "late_beyond_window_frac": 0.0154185022}
+}

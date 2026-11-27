@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 3, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "tour", "num_sensors": 100, "num_clusters": 31, "topology_dir": "results/phase3_bursts_eval/n100/s3/topology", "wall_time_s": 4.399669375},
+  "data": {"generated": 142873, "delivered": 112016, "pdr": 0.7840249732, "overflow": 28430, "overflow_ratio": 0.1989879123, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 8, "in_buffer_at_end": 2419},
+  "bursts": {"count": 5, "generated": 75593, "overflow": 28380, "overflow_ratio": 0.3754315876},
+  "reliability": {"primary_failures": 3, "backup_promotions": 2, "failures_no_backup": 1, "failures_backup_dead": 0, "lost_during_failover": 0, "latest_failover_time_s": 4959, "retry_attempts": 0, "retry_successes": 0, "promise_violations": 0, "retry_exhaustions": 0, "rebootstrap_count": 0},
+  "energy": {"sensor_total_J": 681.8717036, "sensor_mean_J": 6.818717036, "primary_ch_mean_J": 16.98807677, "non_primary_mean_J": 2.249874257, "wifi_total_J": 498.4808108, "ieee802154_total_J": 140.8298328, "baseline_total_J": 42.56106, "jain_cluster_residual": 0.9999250228},
+  "lifetime": {"first_node_death_s": 2567, "first_node_death_censored": false, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 3},
+  "uav": {"distance_m": 52176.70036, "flight_time_s": 5226.564496, "delay_time_s": 0, "hover_time_s": 1974.21729, "flight_energy_J_est": 783984.6744, "hover_energy_J_est": 335616.9393, "visits": 582, "contacts": 570, "failed_contacts": 12, "bytes_per_uav_joule": 3.201595957},
+  "wake": {"windows_scheduled": 570, "windows_opened": 537, "windows_met": 537, "windows_missed": 0, "discovery_contacts": 33, "meeting_success_rate": 1, "missed_window_fraction": 0, "planned_window_width_s": 40, "mean_window_listen_s": 0.2699030624, "scheduled_window_energy_J": 43.48138334, "ch_wifi_awake_fraction": 0.003529977175},
+  "eta": {"n": 540, "mean_signed_error_s": -22.78636946, "mae_s": 22.78636946, "rmse_s": 23.69516459, "late_beyond_window_frac": 0}
+}

@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 1, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "external", "num_sensors": 1000, "num_clusters": 20, "topology_dir": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_ch_sweep_20/n1000/s1/topology", "wall_time_s": 75.61415058},
+  "data": {"generated": 720618, "delivered": 706968, "pdr": 0.9810579253, "overflow": 592, "overflow_ratio": 0.0008215170867, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 0, "in_buffer_at_end": 13058},
+  "reliability": {"primary_failures": 0, "backup_promotions": 0, "failures_no_backup": 0, "failures_backup_dead": 0, "lost_during_failover": 0, "latest_failover_time_s": null, "retry_attempts": 0, "retry_successes": 0, "promise_violations": 0, "retry_exhaustions": 0, "rebootstrap_count": 0},
+  "energy": {"sensor_total_J": 2428.99988, "sensor_mean_J": 2.42899988, "primary_ch_mean_J": 20.27988872, "non_primary_mean_J": 2.064696026, "wifi_total_J": 1795.615325, "ieee802154_total_J": 201.3845555, "baseline_total_J": 432, "jain_cluster_residual": 0.9999712292},
+  "lifetime": {"first_node_death_s": 7200, "first_node_death_censored": true, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 0},
+  "uav": {"distance_m": 55126.8193, "flight_time_s": 5495.645635, "delay_time_s": 0, "hover_time_s": 1709.540912, "flight_energy_J_est": 824346.8452, "hover_energy_J_est": 290621.955, "visits": 537, "contacts": 537, "failed_contacts": 0, "bytes_per_uav_joule": 20.29023233},
+  "wake": {"windows_scheduled": 537, "windows_opened": 517, "windows_met": 517, "windows_missed": 0, "discovery_contacts": 20, "meeting_success_rate": 1, "missed_window_fraction": 0, "planned_window_width_s": 40, "mean_window_listen_s": 0.2821290761, "scheduled_window_energy_J": 43.75821971, "ch_wifi_awake_fraction": 0.003484650376},
+  "eta": {"n": 517, "mean_signed_error_s": -22.65609624, "mae_s": 22.65609624, "rmse_s": 23.04715051, "late_beyond_window_frac": 0}
+}

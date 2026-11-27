@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 8, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "energy-data-score", "num_sensors": 100, "num_clusters": 34, "topology_dir": "results/phase3_bursts_eval/n100/s8/topology", "wall_time_s": 5.001212625},
+  "data": {"generated": 120700, "delivered": 81334, "pdr": 0.6738525269, "overflow": 24737, "overflow_ratio": 0.2049461475, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 106, "in_buffer_at_end": 14523},
+  "bursts": {"count": 8, "generated": 53466, "overflow": 24149, "overflow_ratio": 0.4516702203},
+  "reliability": {"primary_failures": 10, "backup_promotions": 9, "failures_no_backup": 1, "failures_backup_dead": 0, "lost_during_failover": 2, "latest_failover_time_s": 7164, "retry_attempts": 774, "retry_successes": 9, "promise_violations": 159, "retry_exhaustions": 147, "rebootstrap_count": 147},
+  "energy": {"sensor_total_J": 11568.63225, "sensor_mean_J": 115.6863225, "primary_ch_mean_J": 237.3729311, "non_primary_mean_J": 52.99928175, "wifi_total_J": 11376.74208, "ieee802154_total_J": 150.0177353, "baseline_total_J": 41.87244, "jain_cluster_residual": 0.9732555717},
+  "lifetime": {"first_node_death_s": 628, "first_node_death_censored": false, "dead_fraction_x": 0.1, "lifetime_x_s": 7162, "lifetime_x_censored": false, "dead_nodes_at_end": 10},
+  "uav": {"distance_m": 48741.41378, "flight_time_s": 4880.003857, "delay_time_s": 0, "hover_time_s": 2349.740803, "flight_energy_J_est": 732000.5786, "hover_energy_J_est": 399455.9365, "visits": 209, "contacts": 209, "failed_contacts": 0, "bytes_per_uav_joule": 2.300298744},
+  "wake": {"windows_scheduled": 209, "windows_opened": 199, "windows_met": 30, "windows_missed": 159, "discovery_contacts": 170, "meeting_success_rate": 0.1587301587, "missed_window_fraction": 0.8412698413, "planned_window_width_s": 40, "mean_window_listen_s": 110.4544671, "scheduled_window_energy_J": 6805.242868, "ch_wifi_awake_fraction": 0.1512640601},
+  "eta": {"n": 175, "mean_signed_error_s": 683.889358, "mae_s": 706.8208965, "rmse_s": 1055.673441, "late_beyond_window_frac": 0.8685714286}
+}

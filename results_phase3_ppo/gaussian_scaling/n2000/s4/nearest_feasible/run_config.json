@@ -1,0 +1,20 @@
+{
+  "variant": "nearest_feasible",
+  "num_sensors": 2000,
+  "seed": 4,
+  "out": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_gaussian_scaling/n2000/s4/nearest_feasible",
+  "simulation": {
+    "simTime": 7200.0,
+    "wakeMode": "scheduled",
+    "etaMinSamples": 5,
+    "adaptiveLateMargin": 20.0,
+    "uavSpeedJitter": 0.1,
+    "uavDelayProb": 0.0,
+    "chFailureRate": 2.78e-05,
+    "routing": "nearest-feasible",
+    "etaQuantile": 0.95,
+    "topologyDir": "results/phase3_gaussian_scaling/n2000/s4/topology",
+    "outDir": "results/phase3_gaussian_scaling/n2000/s4/nearest_feasible",
+    "seed": 4
+  }
+}

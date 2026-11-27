@@ -1,0 +1,2 @@
+wsn-uav: N=1000 K=6 wakeMode=scheduled routing=energy-data-score seed=5 simTime=7200s
+wsn-uav: wrote results/phase3_ch_sweep_05/n1000/s5/energy_data_score/metrics.json (wall 63.8126 s)

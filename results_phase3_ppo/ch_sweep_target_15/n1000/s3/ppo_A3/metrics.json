@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 3, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "external", "num_sensors": 1000, "num_clusters": 15, "topology_dir": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_ch_sweep_15/n1000/s3/topology", "wall_time_s": 155.4978256},
+  "data": {"generated": 721170, "delivered": 709438, "pdr": 0.9837319911, "overflow": 1432, "overflow_ratio": 0.001985662188, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 0, "in_buffer_at_end": 10300},
+  "reliability": {"primary_failures": 0, "backup_promotions": 0, "failures_no_backup": 0, "failures_backup_dead": 0, "lost_during_failover": 0, "latest_failover_time_s": null, "retry_attempts": 66, "retry_successes": 23, "promise_violations": 28, "retry_exhaustions": 5, "rebootstrap_count": 5},
+  "energy": {"sensor_total_J": 3633.169486, "sensor_mean_J": 3.633169486, "primary_ch_mean_J": 60.27967687, "non_primary_mean_J": 2.770532318, "wifi_total_J": 3019.376145, "ieee802154_total_J": 181.7933415, "baseline_total_J": 432, "jain_cluster_residual": 0.9999975387},
+  "lifetime": {"first_node_death_s": 7200, "first_node_death_censored": true, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 0},
+  "uav": {"distance_m": 57450.50358, "flight_time_s": 5787.957621, "delay_time_s": 0, "hover_time_s": 1429.84964, "flight_energy_J_est": 868193.6431, "hover_energy_J_est": 243074.4388, "visits": 637, "contacts": 637, "failed_contacts": 0, "bytes_per_uav_joule": 20.42892833},
+  "wake": {"windows_scheduled": 637, "windows_opened": 623, "windows_met": 594, "windows_missed": 28, "discovery_contacts": 20, "meeting_success_rate": 0.9549839228, "missed_window_fraction": 0.04501607717, "planned_window_width_s": 40, "mean_window_listen_s": 3.277048989, "scheduled_window_energy_J": 611.4973413, "ch_wifi_awake_fraction": 0.02131293836},
+  "eta": {"n": 622, "mean_signed_error_s": -17.57436686, "mae_s": 21.76725133, "rmse_s": 24.91793694, "late_beyond_window_frac": 0.02090032154}
+}

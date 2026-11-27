@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 9, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "external", "num_sensors": 1000, "num_clusters": 13, "topology_dir": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_ch_sweep_15/n1000/s9/topology", "wall_time_s": 158.0578899},
+  "data": {"generated": 721698, "delivered": 708476, "pdr": 0.9816793174, "overflow": 2945, "overflow_ratio": 0.004080654235, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 0, "in_buffer_at_end": 10277},
+  "reliability": {"primary_failures": 0, "backup_promotions": 0, "failures_no_backup": 0, "failures_backup_dead": 0, "lost_during_failover": 0, "latest_failover_time_s": null, "retry_attempts": 10, "retry_successes": 0, "promise_violations": 2, "retry_exhaustions": 2, "rebootstrap_count": 2},
+  "energy": {"sensor_total_J": 2797.635229, "sensor_mean_J": 2.797635229, "primary_ch_mean_J": 24.89039294, "non_primary_mean_J": 2.506646526, "wifi_total_J": 2191.576645, "ieee802154_total_J": 174.058584, "baseline_total_J": 432, "jain_cluster_residual": 0.9999966614},
+  "lifetime": {"first_node_death_s": 7200, "first_node_death_censored": true, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 0},
+  "uav": {"distance_m": 58347.14057, "flight_time_s": 5844.606921, "delay_time_s": 0, "hover_time_s": 1369.403857, "flight_energy_J_est": 876691.0381, "hover_energy_J_est": 232798.6557, "visits": 520, "contacts": 520, "failed_contacts": 0, "bytes_per_uav_joule": 20.43392753},
+  "wake": {"windows_scheduled": 520, "windows_opened": 507, "windows_met": 505, "windows_missed": 2, "discovery_contacts": 15, "meeting_success_rate": 0.9960552268, "missed_window_fraction": 0.003944773176, "planned_window_width_s": 40, "mean_window_listen_s": 0.4154956273, "scheduled_window_energy_J": 63.19688492, "ch_wifi_awake_fraction": 0.004569460935},
+  "eta": {"n": 507, "mean_signed_error_s": -21.6395778, "mae_s": 22.83682571, "rmse_s": 24.44125874, "late_beyond_window_frac": 0.003944773176}
+}

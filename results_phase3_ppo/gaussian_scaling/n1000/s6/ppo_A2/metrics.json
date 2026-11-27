@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 6, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "external", "num_sensors": 1000, "num_clusters": 6, "topology_dir": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_gaussian_scaling/n1000/s6/topology", "wall_time_s": 68.04587188},
+  "data": {"generated": 719543, "delivered": 712056, "pdr": 0.9895947845, "overflow": 3502, "overflow_ratio": 0.004866978068, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 28, "in_buffer_at_end": 3957},
+  "reliability": {"primary_failures": 1, "backup_promotions": 1, "failures_no_backup": 0, "failures_backup_dead": 0, "lost_during_failover": 0, "latest_failover_time_s": 4752, "retry_attempts": 2, "retry_successes": 2, "promise_violations": 2, "retry_exhaustions": 0, "rebootstrap_count": 0},
+  "energy": {"sensor_total_J": 1759.645742, "sensor_mean_J": 1.759645742, "primary_ch_mean_J": 53.89927476, "non_primary_mean_J": 1.444919611, "wifi_total_J": 1181.647874, "ieee802154_total_J": 146.1448675, "baseline_total_J": 431.853, "jain_cluster_residual": 0.9999964594},
+  "lifetime": {"first_node_death_s": 4750, "first_node_death_censored": false, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 1},
+  "uav": {"distance_m": 67850.05586, "flight_time_s": 6782.432922, "delay_time_s": 0, "hover_time_s": 418.1489109, "flight_energy_J_est": 1017364.938, "hover_energy_J_est": 71085.31485, "visits": 529, "contacts": 529, "failed_contacts": 0, "bytes_per_uav_joule": 20.93416023},
+  "wake": {"windows_scheduled": 529, "windows_opened": 522, "windows_met": 520, "windows_missed": 2, "discovery_contacts": 7, "meeting_success_rate": 0.9961685824, "missed_window_fraction": 0.003831417625, "planned_window_width_s": 40, "mean_window_listen_s": 1.320890632, "scheduled_window_energy_J": 206.851473, "ch_wifi_awake_fraction": 0.01887142571},
+  "eta": {"n": 523, "mean_signed_error_s": -19.19024279, "mae_s": 19.5599386, "rmse_s": 19.79307357, "late_beyond_window_frac": 0.003824091778}
+}

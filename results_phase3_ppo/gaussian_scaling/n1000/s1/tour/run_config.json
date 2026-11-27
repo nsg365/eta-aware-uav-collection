@@ -1,0 +1,20 @@
+{
+  "variant": "tour",
+  "num_sensors": 1000,
+  "seed": 1,
+  "out": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_gaussian_scaling/n1000/s1/tour",
+  "simulation": {
+    "simTime": 7200.0,
+    "wakeMode": "scheduled",
+    "etaMinSamples": 5,
+    "adaptiveLateMargin": 20.0,
+    "uavSpeedJitter": 0.1,
+    "uavDelayProb": 0.0,
+    "chFailureRate": 2.78e-05,
+    "routing": "tour",
+    "etaQuantile": 0.95,
+    "topologyDir": "results/phase3_gaussian_scaling/n1000/s1/topology",
+    "outDir": "results/phase3_gaussian_scaling/n1000/s1/tour",
+    "seed": 1
+  }
+}

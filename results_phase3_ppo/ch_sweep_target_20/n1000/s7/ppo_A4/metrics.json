@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 7, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "external", "num_sensors": 1000, "num_clusters": 24, "topology_dir": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_ch_sweep_20/n1000/s7/topology", "wall_time_s": 61.85058908},
+  "data": {"generated": 719928, "delivered": 694624, "pdr": 0.9648520408, "overflow": 9285, "overflow_ratio": 0.01289712305, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 0, "in_buffer_at_end": 16019},
+  "reliability": {"primary_failures": 0, "backup_promotions": 0, "failures_no_backup": 0, "failures_backup_dead": 0, "lost_during_failover": 0, "latest_failover_time_s": null, "retry_attempts": 62, "retry_successes": 33, "promise_violations": 37, "retry_exhaustions": 3, "rebootstrap_count": 3},
+  "energy": {"sensor_total_J": 3129.876394, "sensor_mean_J": 3.129876394, "primary_ch_mean_J": 38.62761492, "non_primary_mean_J": 2.256981184, "wifi_total_J": 2480.891034, "ieee802154_total_J": 216.98536, "baseline_total_J": 432, "jain_cluster_residual": 0.9999094901},
+  "lifetime": {"first_node_death_s": 7200, "first_node_death_censored": true, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 0},
+  "uav": {"distance_m": 54044.99041, "flight_time_s": 5411.209418, "delay_time_s": 0, "hover_time_s": 1793.297425, "flight_energy_J_est": 811681.4127, "hover_energy_J_est": 304860.5623, "visits": 565, "contacts": 565, "failed_contacts": 0, "bytes_per_uav_joule": 19.90786598},
+  "wake": {"windows_scheduled": 565, "windows_opened": 545, "windows_met": 505, "windows_missed": 37, "discovery_contacts": 27, "meeting_success_rate": 0.9317343173, "missed_window_fraction": 0.06826568266, "planned_window_width_s": 40, "mean_window_listen_s": 2.883309164, "scheduled_window_energy_J": 468.8260701, "ch_wifi_awake_fraction": 0.01229753047},
+  "eta": {"n": 541, "mean_signed_error_s": -18.84453816, "mae_s": 23.10151318, "rmse_s": 25.33841578, "late_beyond_window_frac": 0.02957486137}
+}

@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 4, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "external", "num_sensors": 1000, "num_clusters": 24, "topology_dir": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_ch_sweep_20/n1000/s4/topology", "wall_time_s": 84.521473},
+  "data": {"generated": 719988, "delivered": 697946, "pdr": 0.9693856009, "overflow": 7647, "overflow_ratio": 0.01062101035, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 0, "in_buffer_at_end": 14395},
+  "reliability": {"primary_failures": 0, "backup_promotions": 0, "failures_no_backup": 0, "failures_backup_dead": 0, "lost_during_failover": 0, "latest_failover_time_s": null, "retry_attempts": 109, "retry_successes": 52, "promise_violations": 54, "retry_exhaustions": 1, "rebootstrap_count": 1},
+  "energy": {"sensor_total_J": 3860.623383, "sensor_mean_J": 3.860623383, "primary_ch_mean_J": 70.5596729, "non_primary_mean_J": 2.220482821, "wifi_total_J": 3211.601412, "ieee802154_total_J": 217.0219712, "baseline_total_J": 432, "jain_cluster_residual": 0.9994429576},
+  "lifetime": {"first_node_death_s": 7200, "first_node_death_censored": true, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 0},
+  "uav": {"distance_m": 55378.84282, "flight_time_s": 5570.466085, "delay_time_s": 0, "hover_time_s": 1641.019213, "flight_energy_J_est": 835569.9128, "hover_energy_J_est": 278973.2662, "visits": 617, "contacts": 617, "failed_contacts": 0, "bytes_per_uav_joule": 20.03894728},
+  "wake": {"windows_scheduled": 617, "windows_opened": 594, "windows_met": 540, "windows_missed": 54, "discovery_contacts": 25, "meeting_success_rate": 0.9090909091, "missed_window_fraction": 0.09090909091, "planned_window_width_s": 40, "mean_window_listen_s": 6.966146239, "scheduled_window_energy_J": 1241.36726, "ch_wifi_awake_fraction": 0.02704396776},
+  "eta": {"n": 593, "mean_signed_error_s": -12.59298662, "mae_s": 23.09304486, "rmse_s": 52.65161541, "late_beyond_window_frac": 0.07925801012}
+}

@@ -1,0 +1,7 @@
+{
+  "model": "models/phase3_fixes/C_ppo-scoring_ws.zip",
+  "return": 166.544,
+  "decisions": 242,
+  "inference_ms_mean": 2.4421,
+  "inference_ms_p95": 6.7559
+}

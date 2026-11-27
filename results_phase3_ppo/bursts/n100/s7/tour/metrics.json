@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 7, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "tour", "num_sensors": 100, "num_clusters": 30, "topology_dir": "results/phase3_bursts_eval/n100/s7/topology", "wall_time_s": 5.943882625},
+  "data": {"generated": 127118, "delivered": 112356, "pdr": 0.8838716783, "overflow": 11724, "overflow_ratio": 0.09222926729, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 1, "in_buffer_at_end": 3037},
+  "bursts": {"count": 9, "generated": 59836, "overflow": 11724, "overflow_ratio": 0.1959355572},
+  "reliability": {"primary_failures": 4, "backup_promotions": 4, "failures_no_backup": 0, "failures_backup_dead": 0, "lost_during_failover": 0, "latest_failover_time_s": 4123, "retry_attempts": 0, "retry_successes": 0, "promise_violations": 0, "retry_exhaustions": 0, "rebootstrap_count": 0},
+  "energy": {"sensor_total_J": 660.5743806, "sensor_mean_J": 6.605743806, "primary_ch_mean_J": 15.68266247, "non_primary_mean_J": 2.715635808, "wifi_total_J": 483.2546316, "ieee802154_total_J": 135.265329, "baseline_total_J": 42.05442, "jain_cluster_residual": 0.9999261369},
+  "lifetime": {"first_node_death_s": 887, "first_node_death_censored": false, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 4},
+  "uav": {"distance_m": 52774.60642, "flight_time_s": 5266.51096, "delay_time_s": 0, "hover_time_s": 1940.495053, "flight_energy_J_est": 789976.644, "hover_energy_J_est": 329884.1589, "visits": 550, "contacts": 550, "failed_contacts": 0, "bytes_per_uav_joule": 3.210570448},
+  "wake": {"windows_scheduled": 550, "windows_opened": 516, "windows_met": 516, "windows_missed": 0, "discovery_contacts": 34, "meeting_success_rate": 1, "missed_window_fraction": 0, "planned_window_width_s": 40, "mean_window_listen_s": 0.08237563129, "scheduled_window_energy_J": 12.75174772, "ch_wifi_awake_fraction": 0.00354552866},
+  "eta": {"n": 520, "mean_signed_error_s": -23.30253989, "mae_s": 23.30253989, "rmse_s": 23.73326056, "late_beyond_window_frac": 0}
+}

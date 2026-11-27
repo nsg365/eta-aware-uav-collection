@@ -1,0 +1,2 @@
+wsn-uav: N=100 K=31 wakeMode=scheduled routing=tour seed=3 simTime=7200s
+wsn-uav: wrote results/phase3_bursts_eval/n100/s3/tour/metrics.json (wall 4.39967 s)

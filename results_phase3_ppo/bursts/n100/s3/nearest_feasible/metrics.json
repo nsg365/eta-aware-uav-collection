@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 3, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "nearest-feasible", "num_sensors": 100, "num_clusters": 31, "topology_dir": "results/phase3_bursts_eval/n100/s3/topology", "wall_time_s": 5.540273458},
+  "data": {"generated": 142873, "delivered": 108875, "pdr": 0.7620404135, "overflow": 27778, "overflow_ratio": 0.1944244189, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 222, "in_buffer_at_end": 5998},
+  "bursts": {"count": 5, "generated": 75593, "overflow": 26262, "overflow_ratio": 0.3474131203},
+  "reliability": {"primary_failures": 3, "backup_promotions": 2, "failures_no_backup": 1, "failures_backup_dead": 0, "lost_during_failover": 0, "latest_failover_time_s": 4959, "retry_attempts": 154, "retry_successes": 14, "promise_violations": 41, "retry_exhaustions": 27, "rebootstrap_count": 27},
+  "energy": {"sensor_total_J": 2263.487641, "sensor_mean_J": 22.63487641, "primary_ch_mean_J": 63.01556184, "non_primary_mean_J": 4.492829327, "wifi_total_J": 2080.096748, "ieee802154_total_J": 140.8298328, "baseline_total_J": 42.56106, "jain_cluster_residual": 0.990245176},
+  "lifetime": {"first_node_death_s": 2567, "first_node_death_censored": false, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 3},
+  "uav": {"distance_m": 41738.6019, "flight_time_s": 4192.139558, "delay_time_s": 0, "hover_time_s": 3007.860442, "flight_energy_J_est": 628820.9336, "hover_energy_J_est": 511336.2752, "visits": 494, "contacts": 493, "failed_contacts": 0, "bytes_per_uav_joule": 3.05571896},
+  "wake": {"windows_scheduled": 493, "windows_opened": 465, "windows_met": 424, "windows_missed": 41, "discovery_contacts": 55, "meeting_success_rate": 0.911827957, "missed_window_fraction": 0.08817204301, "planned_window_width_s": 40, "mean_window_listen_s": 6.715869823, "scheduled_window_energy_J": 936.8638402, "ch_wifi_awake_fraction": 0.02721188888},
+  "eta": {"n": 462, "mean_signed_error_s": -9.3011648, "mae_s": 38.72558938, "rmse_s": 70.94479645, "late_beyond_window_frac": 0.08008658009}
+}
