@@ -1,0 +1,30 @@
+{
+  "params": {
+    "num_sensors": 1000,
+    "area_m": 500.0,
+    "seed": 7,
+    "deployment_mode": "gaussian_hotspot",
+    "hotspot_count": 3,
+    "hotspot_std_m": 25.0,
+    "sensor_range_m": 80.0,
+    "dbscan_kappa": 0.8,
+    "dbscan_min_samples": 3,
+    "uav_range_m": 30.0,
+    "alpha": 0.5,
+    "min_candidates": 2,
+    "max_cluster_size": 300,
+    "depot_x": 0.0,
+    "depot_y": 0.0
+  },
+  "dbscan_eps_m": 64.0,
+  "dbscan_clusters": 2,
+  "dbscan_noise_points": 0,
+  "feasibility_splits": 4,
+  "num_clusters": 6,
+  "tour_length_m": 1435.4409388054523,
+  "clusters_without_backup": 0,
+  "singleton_clusters": 0,
+  "avg_cluster_size": 166.66666666666666,
+  "min_cluster_size": 138,
+  "max_cluster_size": 218
+}

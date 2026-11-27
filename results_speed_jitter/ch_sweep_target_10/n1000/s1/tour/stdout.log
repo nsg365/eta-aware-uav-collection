@@ -1,0 +1,2 @@
+wsn-uav: N=1000 K=10 wakeMode=scheduled routing=tour seed=1 simTime=7200s
+wsn-uav: wrote results/ch_sweep_target_10/n1000/s1/tour/metrics.json (wall 164.949 s)

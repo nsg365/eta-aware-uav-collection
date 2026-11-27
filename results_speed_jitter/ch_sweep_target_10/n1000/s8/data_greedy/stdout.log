@@ -1,0 +1,2 @@
+wsn-uav: N=1000 K=13 wakeMode=scheduled routing=data-greedy seed=8 simTime=7200s
+wsn-uav: wrote results/ch_sweep_target_10/n1000/s8/data_greedy/metrics.json (wall 229.739 s)

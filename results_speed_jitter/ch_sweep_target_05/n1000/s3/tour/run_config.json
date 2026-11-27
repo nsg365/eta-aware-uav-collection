@@ -1,0 +1,23 @@
+{
+  "variant": "tour",
+  "num_sensors": 1000,
+  "seed": 3,
+  "out": "/home/shreya/mlown/wsn-uav/results/ch_sweep_target_05/n1000/s3/tour",
+  "simulation": {
+    "simTime": 7200.0,
+    "uavSpeed": 10.0,
+    "uavSpeedStd": 0.0,
+    "uavSpeedJitter": 0.1,
+    "wakeMode": "scheduled",
+    "etaMinSamples": 5,
+    "adaptiveLateMargin": 20.0,
+    "uavDelayProb": 0.0,
+    "uavDelayMin": 1.0,
+    "uavDelayMax": 5.0,
+    "routing": "tour",
+    "etaQuantile": 0.95,
+    "topologyDir": "results/ch_sweep_target_05/n1000/s3/topology",
+    "outDir": "results/ch_sweep_target_05/n1000/s3/tour",
+    "seed": 3
+  }
+}

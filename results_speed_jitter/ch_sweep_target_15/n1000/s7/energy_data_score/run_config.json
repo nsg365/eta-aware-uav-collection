@@ -1,0 +1,23 @@
+{
+  "variant": "energy_data_score",
+  "num_sensors": 1000,
+  "seed": 7,
+  "out": "results_speed_jitter/ch_sweep_target_15/n1000/s7/energy_data_score",
+  "simulation": {
+    "simTime": 7200.0,
+    "uavSpeed": 10.0,
+    "uavSpeedStd": 0.0,
+    "uavSpeedJitter": 0.1,
+    "wakeMode": "scheduled",
+    "etaMinSamples": 5,
+    "adaptiveLateMargin": 20.0,
+    "uavDelayProb": 0.0,
+    "uavDelayMin": 1.0,
+    "uavDelayMax": 5.0,
+    "routing": "energy-data-score",
+    "etaQuantile": 0.95,
+    "topologyDir": "results_speed_jitter/ch_sweep_target_15/n1000/s7/topology",
+    "outDir": "results_speed_jitter/ch_sweep_target_15/n1000/s7/energy_data_score",
+    "seed": 7
+  }
+}

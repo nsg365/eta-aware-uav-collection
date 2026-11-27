@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 9, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "energy-data-score", "num_sensors": 1000, "num_clusters": 20, "topology_dir": "results_speed_jitter/ch_sweep_target_20/n1000/s9/topology", "wall_time_s": 99.6347045},
+  "data": {"generated": 717207, "delivered": 361432, "pdr": 0.5039437708, "overflow": 325312, "overflow_ratio": 0.4535817414, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 256, "in_buffer_at_end": 30207},
+  "reliability": {"primary_failures": 18, "backup_promotions": 18, "failures_no_backup": 0, "failures_backup_dead": 0, "lost_during_failover": 27, "latest_failover_time_s": 6602, "retry_attempts": 484, "retry_successes": 18, "promise_violations": 107, "retry_exhaustions": 89, "rebootstrap_count": 89},
+  "energy": {"sensor_total_J": 12892.32937, "sensor_mean_J": 12.89232937, "primary_ch_mean_J": 97.18171104, "non_primary_mean_J": 11.17213791, "wifi_total_J": 12262.2036, "ieee802154_total_J": 200.7674556, "baseline_total_J": 429.35832, "jain_cluster_residual": 0.9980392615},
+  "lifetime": {"first_node_death_s": 4033, "first_node_death_censored": false, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 18},
+  "uav": {"distance_m": 51107.63271, "flight_time_s": 5093.541065, "delay_time_s": 0, "hover_time_s": 2119.285188, "flight_energy_J_est": 764031.1598, "hover_energy_J_est": 360278.482, "visits": 214, "contacts": 214, "failed_contacts": 0, "bytes_per_uav_joule": 10.28704511},
+  "wake": {"windows_scheduled": 214, "windows_opened": 208, "windows_met": 88, "windows_missed": 107, "discovery_contacts": 108, "meeting_success_rate": 0.4512820513, "missed_window_fraction": 0.5487179487, "planned_window_width_s": 40, "mean_window_listen_s": 137.9667183, "scheduled_window_energy_J": 8866.648144, "ch_wifi_awake_fraction": 0.2456550675},
+  "eta": {"n": 194, "mean_signed_error_s": 248.4148582, "mae_s": 275.6439669, "rmse_s": 404.4645882, "late_beyond_window_frac": 0.7371134021}
+}
