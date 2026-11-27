@@ -1,0 +1,47 @@
+# Phase 4 A7: disable backup-CH functionality vs backup-enabled control.
+# Matched topology, traffic, UAV randomness and physical-failure schedule per seed.
+
+[experiment]
+name = "a7_matched_multiseed"
+num_sensors = [60, 100, 150]
+seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+[topology]
+area_m = 500.0
+sensor_range_m = 80.0
+dbscan_kappa = 0.8
+dbscan_min_samples = 3
+uav_range_m = 30.0
+alpha = 0.5
+min_candidates = 2
+depot_x = 0.0
+depot_y = 0.0
+
+[simulation]
+simTime = 7200.0
+routing = "tour"
+initialEnergy = 500.0
+readingRate = 0.1
+uavSpeed = 10.0
+uavSpeedStd = 1.0
+dutyPeriod = 10.0
+dutyListen = 1.0
+wakeMode = "scheduled"
+wakeHalfWidth = 20.0
+uavDelayProb = 0.1
+uavDelayMin = 10.0
+uavDelayMax = 30.0
+wDrift = 0.0
+heartbeatInterval = 1.0
+missedHeartbeats = 3
+enableBackupCH = true
+failoverOnMissedMeeting = false
+chFailureRate = 2.78e-5
+
+[[variant]]
+name = "a7_no_backup"
+enableBackupCH = false
+
+[[variant]]
+name = "backup_enabled_control"
+enableBackupCH = true

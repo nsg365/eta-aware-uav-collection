@@ -104,3 +104,18 @@ def test_missed_promises_are_retried_and_counted_once(topology, tmp_path):
     assert r["retry_attempts"] >= w["windows_missed"]
     assert 0 < r["retry_successes"] <= w["windows_missed"]
     assert r["primary_failures"] == 0
+
+def test_a8_missed_scheduled_meeting_triggers_failover(topology, tmp_path):
+    # Original A8 ablation: a newly missed scheduled UAV meeting immediately
+    # triggers logical backup failover. It must not wait for retry exhaustion.
+    m = run(topology, tmp_path, wakeMode="scheduled", simTime=900,
+            uavDelayProb=0.5, uavDelayMin=25, uavDelayMax=40,
+            failoverOnMissedMeeting=True, chFailureRate=0.0)
+    assert m["wake"]["windows_missed"] > 0
+    assert m["reliability"]["missed_meeting_triggers"] > 0
+    assert m["reliability"]["backup_promotions"] > 0
+    assert m["reliability"]["primary_failures"] == (
+        m["reliability"]["backup_promotions"]
+        + m["reliability"]["failures_no_backup"]
+        + m["reliability"]["failures_backup_dead"]
+    )

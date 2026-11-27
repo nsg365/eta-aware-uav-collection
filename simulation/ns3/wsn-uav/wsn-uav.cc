@@ -26,6 +26,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <fstream>
 #include <map>
 
@@ -81,22 +82,42 @@ void
 CheckEnergy()
 {
     double now = Simulator::Now().GetSeconds();
+
     for (auto& s : g_world.sensors)
     {
         if (!s.alive || g_world.Residual(s, now) > 0)
         {
             continue;
         }
+
         s.alive = false;
         s.deathTime = now;
+
+        // If the primary physically dies, ignore UAV timeouts
+        // that happened before its death.
+        Cluster& clusterState = g_world.clusters.at(s.cluster);
+
+        if (clusterState.primary == s.id)
+        {
+            clusterState.lastFailedContactCount =
+                clusterState.failedContacts;
+        }
+
         NS_LOG_INFO(now << "s sensor " << s.id << " depleted");
+
         if (auto it = g_chApp.find(s.id); it != g_chApp.end())
         {
             it->second->OnDeath();
         }
         else if (auto dv = g_wifiDev.find(s.id); dv != g_wifiDev.end())
         {
-            dv->second->GetPhy()->SetOffMode();
+            // Backup CH radios normally start in sleep mode. SetOffMode() is
+            // invalid from an already sleeping/off PHY state in ns-3.
+            Ptr<WifiPhy> phy = dv->second->GetPhy();
+            if (!phy->IsStateSleep() && !phy->IsStateOff())
+            {
+                phy->SetOffMode();
+            }
         }
 
         // Re-elect a standby only when backup CH functionality is enabled.
@@ -121,7 +142,10 @@ CheckEnergy()
             }
         }
     }
-    Simulator::Schedule(Seconds(g_world.cfg.energyCheckInterval), &CheckEnergy);
+
+    Simulator::Schedule(
+        Seconds(g_world.cfg.energyCheckInterval),
+        &CheckEnergy);
 }
 
 void
@@ -141,28 +165,26 @@ CheckPrimaryHeartbeats()
 
     for (auto& c : g_world.clusters)
     {
-        // Keep a failed cluster latched if takeover fails. A successful takeover
-        // re-arms it so that the promoted primary can fail later as well.
-        if (c.primaryFailureDetected)
-        {
-            continue;
-        }
+        // Consume one exogenous physical-failure draw per cluster per tick,
+        // even when a takeover is pending. This keeps the cluster/tick random
+        // failure schedule aligned between matched A8 and baseline runs.
+        const double failureDraw = g_chFailureRv->GetValue();
 
         Sensor& primary = g_world.sensors.at(c.primary);
-        bool meetingMissed = false;
-
-        // Both the baseline and A8 use the same random primary-CH failure
-        // distribution. The ablation changes only the signal used for failover.
         const double failureProbability =
             1.0 - std::exp(-g_world.cfg.chFailureRate *
                            g_world.cfg.heartbeatInterval);
 
+        // Physical primary failure is injected identically for both strategies.
         if (primary.alive &&
             g_world.cfg.chFailureRate > 0.0 &&
-            g_chFailureRv->GetValue() < failureProbability)
+            failureDraw < failureProbability)
         {
             primary.alive = false;
             primary.deathTime = now;
+
+            // Ignore contact timeouts that occurred before physical death.
+            c.lastFailedContactCount = c.failedContacts;
 
             if (auto app = g_chApp.find(primary.id); app != g_chApp.end())
             {
@@ -173,117 +195,214 @@ CheckPrimaryHeartbeats()
                             << c.id << ", primary sensor " << primary.id);
         }
 
+        // Maintain the heartbeat counter for physical failures. The baseline
+        // uses it as its trigger; A8 uses missed meetings instead.
+        if (!primary.alive)
+        {
+            c.missedHeartbeatCount++;
+        }
+        else
+        {
+            c.missedHeartbeatCount = 0;
+        }
+
+        bool failureDetected = false;
+        bool newlyMissedWindow = false;
+        bool contactTimedOutAfterPhysicalDeath = false;
+
         if (g_world.cfg.failoverOnMissedMeeting)
         {
-            // A8: a newly recorded missed UAV meeting is the failover signal.
-            // Unlike the baseline, A8 does not use missed-heartbeat counts.
-            meetingMissed = c.windowsMissed > c.lastMissedMeetingCount;
-            c.lastMissedMeetingCount = c.windowsMissed;
+            // ORIGINAL A8: a newly closed scheduled window without UAV contact
+            // is the logical failover signal. Do NOT wait for retry exhaustion.
+            newlyMissedWindow =
+                c.windowsMissed > c.lastMissedMeetingCount;
 
-            if (meetingMissed)
+            // If the primary physically died, OnDeath() cancels its window-close
+            // event. In that case, the first UAV contact timeout after death is
+            // the observable missed-contact signal for A8.
+            contactTimedOutAfterPhysicalDeath =
+                !primary.alive &&
+                c.failedContacts > c.lastFailedContactCount;
+
+            failureDetected =
+                newlyMissedWindow || contactTimedOutAfterPhysicalDeath;
+
+            // Advance snapshots once per heartbeat tick. The counters are
+            // cumulative, so this prevents old events from triggering again.
+            c.lastMissedMeetingCount = c.windowsMissed;
+            c.lastFailedContactCount = c.failedContacts;
+
+            if (newlyMissedWindow)
             {
-                // A missed meeting is a logical failure declaration in A8, not
-                // proof that the physical sensor has died. Retire the CH app
-                // only if a live backup can actually take over below.
-                NS_LOG_INFO(now << "s missed UAV meeting triggered failover for cluster "
+                NS_LOG_INFO(now << "s A8 missed-meeting failover trigger for cluster "
+                                << c.id << ", primary sensor " << primary.id);
+            }
+            if (contactTimedOutAfterPhysicalDeath)
+            {
+                NS_LOG_INFO(now << "s A8 post-death UAV contact-timeout trigger for cluster "
                                 << c.id << ", primary sensor " << primary.id);
             }
         }
         else
         {
-            // Baseline: detect actual CH failures through missed heartbeats.
-            if (!primary.alive)
+            // Baseline: only actual physical CH failure detected through
+            // consecutive missed heartbeats causes failover. A missed UAV
+            // meeting alone continues through the existing retry mechanism.
+            failureDetected =
+                !primary.alive &&
+                c.missedHeartbeatCount >= g_world.cfg.missedHeartbeats;
+        }
+
+        if (failureDetected && !c.primaryFailureDetected)
+        {
+            c.primaryFailureDetected = true;
+            c.primaryFailureDetectedTime = now;
+            c.primaryFailures++;
+            if (g_world.cfg.failoverOnMissedMeeting)
             {
-                c.missedHeartbeatCount++;
+                if (newlyMissedWindow)
+                {
+                    c.missedMeetingTriggers++;
+                }
+                if (contactTimedOutAfterPhysicalDeath)
+                {
+                    c.postDeathContactTriggers++;
+                }
             }
             else
             {
-                c.missedHeartbeatCount = 0;
+                c.heartbeatFailureTriggers++;
             }
+            c.takeoverFailureCounted = false;
+
+            NS_LOG_INFO(now << "s primary failover detected for cluster " << c.id
+                            << ", primary sensor " << c.primary
+                            << (g_world.cfg.failoverOnMissedMeeting
+                                    ? " (A8 missed meeting/contact)"
+                                    : " (heartbeat physical failure)"));
         }
 
-        const bool failureDetected = g_world.cfg.failoverOnMissedMeeting
-                                         ? meetingMissed
-                                         : (!primary.alive &&
-                                            c.missedHeartbeatCount >=
-                                                g_world.cfg.missedHeartbeats);
-
-        if (!failureDetected)
+        // If takeover previously lacked a live standby, keep trying on later
+        // ticks. Do not recount the same pending failure.
+        if (!c.primaryFailureDetected)
         {
             continue;
         }
 
-        c.primaryFailureDetected = true;
-        c.primaryFailureDetectedTime = now;
-        c.primaryFailures++;
-
         const uint32_t failedPrimaryId = c.primary;
-        NS_LOG_INFO(now << "s primary failure detected for cluster " << c.id
-                        << ", primary sensor " << failedPrimaryId);
 
-        // Attempt backup promotion. The same takeover path is used by the
-        // heartbeat baseline and A8; only the failure trigger differs.
-        if (g_world.cfg.enableBackupCH && c.backup >= 0)
+        if (!g_world.cfg.enableBackupCH)
         {
-            const uint32_t backupId = static_cast<uint32_t>(c.backup);
-
-            // For a logical A8 failover, retire the old CH application only
-            // after confirming that its backup is alive. OnDeath() accounts
-            // for the old CH buffer; PromoteBackup() then credits the replicated
-            // portion and records only the unrecovered loss.
-            if (g_world.sensors.at(backupId).alive &&
-                g_world.sensors.at(failedPrimaryId).alive)
+            if (!c.takeoverFailureCounted)
             {
-                if (auto app = g_chApp.find(failedPrimaryId); app != g_chApp.end())
+                c.failuresNoBackup++;
+                c.takeoverFailureCounted = true;
+                NS_LOG_WARN(now << "s backup functionality disabled for cluster " << c.id);
+            }
+            continue;
+        }
+
+        // A failed/depleted standby is re-elected by CheckEnergy() while the
+        // primary is alive. Never promote a candidate that has not already
+        // been assigned as this cluster's live backup.
+        const bool hasAssignedBackup = c.backup >= 0;
+        const bool liveAssignedBackup =
+            hasAssignedBackup &&
+            g_world.sensors.at(static_cast<uint32_t>(c.backup)).alive &&
+            g_world.sensors.at(static_cast<uint32_t>(c.backup)).role == Role::BACKUP;
+
+        if (!liveAssignedBackup)
+        {
+            if (!c.takeoverFailureCounted)
+            {
+                if (hasAssignedBackup)
                 {
-                    app->second->OnDeath();
+                    c.failuresBackupDead++;
                 }
-            }
+                else
+                {
+                    c.failuresNoBackup++;
+                }
+                c.takeoverFailureCounted = true;
 
-            if (g_world.PromoteBackup(c.id, now))
+                NS_LOG_WARN(now << "s no live assigned backup for cluster " << c.id
+                                << "; original primary is left running if still alive");
+            }
+            // Crucially, do not call OnDeath() on a logically failed primary
+            // unless a live, pre-elected backup is ready to take over. If the
+            // primary is still physically alive, let its retry/discovery logic
+            // continue and re-arm A8 for a later newly missed window. A dead
+            // physical primary stays latched while takeover remains impossible.
+            if (g_world.cfg.failoverOnMissedMeeting && primary.alive)
             {
-                g_chApp.erase(failedPrimaryId);
-
-                Ptr<WifiNetDevice> backupDevice = g_wifiDev.at(backupId);
-                Ptr<WifiPhy> backupPhy = backupDevice->GetPhy();
-
-                auto promotedApp = CreateObject<ClusterHeadApp>(
-                    &g_world, c.id, backupId, backupPhy, 0.0, 0.0);
-                backupDevice->GetNode()->AddApplication(promotedApp);
-                promotedApp->SetStartTime(Seconds(0));
-                promotedApp->SetStopTime(Seconds(g_world.cfg.simTime - now));
-                g_chApp[backupId] = promotedApp;
-
-                g_uavApp->SetActivePrimary(c.id, backupId);
-
-                const int32_t replacementBackup = g_world.ElectBackup(c.id, now);
-                c.missedHeartbeatCount = 0;
-                c.lastMissedMeetingCount = c.windowsMissed;
                 c.primaryFailureDetected = false;
-
-                NS_LOG_INFO(now << "s replacement backup for cluster " << c.id
-                                << " is " << replacementBackup);
-                NS_LOG_INFO(now << "s backup sensor " << backupId
-                                << " promoted to primary for cluster " << c.id);
+                c.takeoverFailureCounted = false;
             }
-            else
+            continue;
+        }
+
+        const uint32_t backupId = static_cast<uint32_t>(c.backup);
+
+        // A8 is a logical failover when the old primary is still physically
+        // alive. Retire only its CH application; do not mark the sensor dead.
+        // For physical failures, CheckEnergy()/failure injection already called
+        // OnDeath() and set Sensor::alive=false.
+        if (g_world.sensors.at(failedPrimaryId).alive)
+        {
+            if (auto app = g_chApp.find(failedPrimaryId); app != g_chApp.end())
+            {
+                app->second->OnDeath();
+            }
+        }
+
+        if (!g_world.PromoteBackup(c.id, now))
+        {
+            if (!c.takeoverFailureCounted)
             {
                 c.failuresBackupDead++;
-                NS_LOG_WARN(now << "s backup promotion failed for cluster " << c.id
-                                << " because backup sensor " << backupId << " is dead");
+                c.takeoverFailureCounted = true;
             }
+            NS_LOG_WARN(now << "s backup promotion failed for cluster " << c.id);
+            continue;
         }
-        else
-        {
-            c.failuresNoBackup++;
-            NS_LOG_WARN(now << "s no backup available for cluster " << c.id);
-        }
+
+        // Stop tracking the retired primary application and install a fresh
+        // application on the promoted standby.
+        g_chApp.erase(failedPrimaryId);
+
+        Ptr<WifiNetDevice> backupDevice = g_wifiDev.at(backupId);
+        Ptr<WifiPhy> backupPhy = backupDevice->GetPhy();
+
+        auto promotedApp = CreateObject<ClusterHeadApp>(
+            &g_world, c.id, backupId, backupPhy, 0.0, 0.0);
+        backupDevice->GetNode()->AddApplication(promotedApp);
+        promotedApp->SetStartTime(Seconds(0));
+        promotedApp->SetStopTime(Seconds(g_world.cfg.simTime - now));
+        g_chApp[backupId] = promotedApp;
+
+        // Notify the UAV that the active CH has changed.
+        g_uavApp->SetActivePrimary(c.id, backupId);
+
+        // Elect the next standby from the remaining BACKUP-role candidates.
+        const int32_t replacementBackup = g_world.ElectBackup(c.id, now);
+
+        c.missedHeartbeatCount = 0;
+        c.lastMissedMeetingCount = c.windowsMissed;
+        c.lastFailedContactCount = c.failedContacts;
+        c.primaryFailureDetected = false;
+        c.takeoverFailureCounted = false;
+
+        NS_LOG_INFO(now << "s replacement backup for cluster " << c.id
+                        << " is " << replacementBackup);
+        NS_LOG_INFO(now << "s backup sensor " << backupId
+                        << " promoted to primary for cluster " << c.id);
     }
 
     Simulator::Schedule(
         Seconds(g_world.cfg.heartbeatInterval),
         &CheckPrimaryHeartbeats);
 }
+
 Vector
 ReadDepot(const std::string& dir)
 {

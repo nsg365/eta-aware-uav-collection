@@ -235,8 +235,18 @@ World::PromoteBackup(uint32_t clusterId, double now)
     uint64_t recovered =
         std::min(c.backupBuffer, c.bufferLostAtFailure);
 
-    c.lostChDead -= recovered;
-    c.lostDuringFailover = c.bufferLostAtFailure - recovered;
+    // OnDeath() has already added the failed primary's buffered readings to
+    // lostChDead. Remove the replicated portion, guarding against unsigned
+    // underflow if accounting is ever changed by another failure path.
+    if (c.lostChDead >= recovered)
+    {
+        c.lostChDead -= recovered;
+    }
+    else
+    {
+        c.lostChDead = 0;
+    }
+    c.lostDuringFailover += c.bufferLostAtFailure - recovered;
 
     // Change cluster and sensor roles.
     oldPrimary.role = Role::MEMBER;
@@ -279,6 +289,14 @@ World::ElectBackup(uint32_t clusterId, double now)
         }
 
         if (!candidate.alive)
+        {
+            continue;
+        }
+
+        // Only a currently assigned standby is eligible. In particular, do
+        // not re-elect a retired old primary whose role was changed to MEMBER
+        // during a previous promotion (its Wi-Fi PHY may already be OFF).
+        if (candidate.role != Role::BACKUP)
         {
             continue;
         }
@@ -513,6 +531,9 @@ World::WriteOutputs(double wallSeconds) const
     }
 
     uint64_t totalPrimaryFailures = 0;
+    uint64_t totalMissedMeetingTriggers = 0;
+    uint64_t totalPostDeathContactTriggers = 0;
+    uint64_t totalHeartbeatFailureTriggers = 0;
     uint64_t totalBackupPromotions = 0;
     uint64_t totalFailuresNoBackup = 0;
     uint64_t totalFailuresBackupDead = 0;
@@ -529,6 +550,9 @@ World::WriteOutputs(double wallSeconds) const
 for (const auto& c : clusters)
 {
     totalPrimaryFailures += c.primaryFailures;
+    totalMissedMeetingTriggers += c.missedMeetingTriggers;
+    totalPostDeathContactTriggers += c.postDeathContactTriggers;
+    totalHeartbeatFailureTriggers += c.heartbeatFailureTriggers;
     totalBackupPromotions += c.backupPromotions;
     totalFailuresNoBackup += c.failuresNoBackup;
     totalFailuresBackupDead += c.failuresBackupDead;
@@ -577,6 +601,9 @@ for (const auto& c : clusters)
       << ", \"overflow\": " << burstOvf
       << ", \"overflow_ratio\": " << nan(burstGen > 0, double(burstOvf) / burstGen) << "},\n"
       << "  \"reliability\": {\"primary_failures\": " << totalPrimaryFailures
+      << ", \"missed_meeting_triggers\": " << totalMissedMeetingTriggers
+      << ", \"post_death_contact_triggers\": " << totalPostDeathContactTriggers
+      << ", \"heartbeat_failure_triggers\": " << totalHeartbeatFailureTriggers
       << ", \"backup_promotions\": " << totalBackupPromotions
       << ", \"failures_no_backup\": " << totalFailuresNoBackup
       << ", \"failures_backup_dead\": " << totalFailuresBackupDead
@@ -628,7 +655,8 @@ for (const auto& c : clusters)
 
     std::ofstream pc(cfg.outDir + "/per_cluster.csv");
     pc << "cluster_id,size,generated,delivered,overflow,lost_154,lost_wifi,lost_ch_dead,in_buffer,"
-      "primary_failures,backup_promotions,failures_no_backup,failures_backup_dead,"
+      "primary_failures,missed_meeting_triggers,post_death_contact_triggers,heartbeat_failure_triggers,"
+      "backup_promotions,failures_no_backup,failures_backup_dead,"
       "lost_during_failover,last_failover_time_s,"
       "visits,contacts,failed_contacts,discovery_contacts,"
       "windows_scheduled,windows_opened,windows_met,windows_missed,"
@@ -639,7 +667,9 @@ for (const auto& c : clusters)
         const auto& c = clusters[k];
         pc << c.id << "," << c.size << "," << c.generated << "," << c.delivered << "," << c.overflow
            << "," << c.lost154 << "," << c.sentWifi - c.delivered << "," << c.lostChDead << ","
-           << c.buffer << "," << c.primaryFailures << "," << c.backupPromotions << ","
+           << c.buffer << "," << c.primaryFailures << ","
+           << c.missedMeetingTriggers << "," << c.postDeathContactTriggers << ","
+           << c.heartbeatFailureTriggers << "," << c.backupPromotions << ","
            << c.failuresNoBackup << "," << c.failuresBackupDead << ","
            << c.lostDuringFailover << "," << c.lastFailoverTime << ","
            << c.visits << "," << c.contacts << "," << c.failedContacts << ","
