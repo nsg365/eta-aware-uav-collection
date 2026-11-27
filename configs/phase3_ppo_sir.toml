@@ -1,0 +1,131 @@
+# Phase 3 PPO variants A1-A4 and A4P retrained on sir's setting: UAV speed uniform 9-11 m/s per
+# leg, no extra delays (configs/phase3_ppo.toml used 10-30 s delays on 10 % of legs).
+# A1-A4P train on small networks (uniform and Gaussian-hotspot, 100 sensors), about 20-25 min
+# each. A4M is A4 trained on the full mix of deployments we report on, including the 1000-sensor
+# Gaussian and CH-sweep networks (about 2-2.5 h, since a 1000-sensor mission is about 25x slower
+# to simulate). Each training seed uses one network type (seed mod number of types).
+# Reward, training fixes and ablation variants are as in configs/phase3_ppo.toml.
+#
+#   python3 -m routing.train configs/phase3_ppo_sir.toml --arch scoring --warm-start --variant A4
+#
+# Each variant is saved as models/phase3_ppo_sir/<variant>_ppo-scoring_ws.zip plus .json. Run the
+# variants one after another (each uses n_envs simulator processes). Full steps:
+# docs/handoff/phase3.md section 12.
+
+[train]
+name = "phase3_ppo_sir"
+num_sensors = 100             # default; each network type below sets its own
+train_seeds = [101, 300]      # inclusive range of network seeds; disjoint from evaluation seeds
+eval_seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+timesteps = 300_000
+n_envs = 8
+topology_config = "configs/default.toml"   # base [topology]: sensor range 80 m, UAV range 30 m
+networks = [                  # A1-A4P; A4M sets its own list below
+  { name = "uniform_n100", num_sensors = 100 },
+  { name = "gauss_n100_h4", num_sensors = 100, deployment_mode = "gaussian_hotspot", hotspot_count = 4, hotspot_std_m = 25.0 },
+]
+
+[ppo]
+learning_rate = 3e-4
+n_steps = 512                 # per env, so 4096 decisions per update with 8 envs
+batch_size = 256
+n_epochs = 10
+gamma = 0.99                  # per decision; one decision is about 14 s of mission time
+gae_lambda = 0.95
+ent_coef = 0.01
+net_arch = [256, 256]
+
+[dqn]                         # routing/dqn.py (--algo dqn)
+lr = 1e-4
+gamma = 0.99
+n_step = 3
+buffer_size = 200_000
+batch_size = 256
+learning_starts = 5_000
+updates_per_step = 1          # gradient steps per vector step (n_envs decisions)
+tau = 0.005
+eps_start = 1.0
+eps_end = 0.05
+eps_fraction = 0.3
+
+[warm_start]                  # --warm-start
+demo_steps = 50_000           # tour decisions recorded before training
+epochs = 10                   # PPO: behaviour-cloning passes over them
+lr = 1e-3
+batch_size = 256
+
+[reward]                      # R = beta_d*R_D - beta_e*R_UAV - beta_m*R_miss - beta_c*R_CH - beta_r*R_risk
+beta_d = 1.0
+beta_e = 0.2
+beta_m = 1.0
+beta_c = 0.25                 # R_CH in units of one CH listening through one fixed window
+
+# Sir's setting, shared by all variants: per-leg speed uniform in [9, 11] m/s, no extra delays,
+# and one hardware failure per CH-capable node per 10 h (as in configs/phase3_gaussian_scaling.toml).
+[simulation]
+simTime = 7200.0
+wakeMode = "scheduled"
+uavSpeedJitter = 0.1
+uavDelayProb = 0.0
+chFailureRate = 2.78e-5
+
+[[variant]]
+name = "A1"                   # PPO only: no ETA risk, fixed window
+adaptiveWindow = false
+risk_in_obs = false
+t0 = 15.0
+bc_weight = 1.0
+shaping = true
+
+[[variant]]
+name = "A2"                   # + lateness quantile in the observation
+adaptiveWindow = false
+risk_in_obs = true
+t0 = 15.0
+bc_weight = 1.0
+shaping = true
+
+[[variant]]
+name = "A3"                   # + adaptive wake window
+adaptiveWindow = true
+risk_in_obs = true
+t0 = 15.0
+bc_weight = 1.0
+shaping = true
+
+[[variant]]
+name = "A4"                   # full ER-PPO: + promises-at-risk term in the reward
+adaptiveWindow = true
+risk_in_obs = true
+beta_r = 0.5
+t0 = 15.0
+bc_weight = 1.0
+shaping = true
+
+[[variant]]
+name = "A4P"                  # A4 + the policy also chooses each promise length (D7 option b)
+adaptiveWindow = true
+risk_in_obs = true
+beta_r = 0.5
+promise_factors = [0.75, 1.0, 1.5]
+t0 = 15.0
+bc_weight = 1.0
+shaping = true
+
+[[variant]]
+name = "A4M"                  # A4 trained on the full mix of reported deployments (slow)
+adaptiveWindow = true
+risk_in_obs = true
+beta_r = 0.5
+t0 = 15.0
+bc_weight = 1.0
+shaping = true
+networks = [                  # uniform 100, Gaussian 100/1000 and the four CH-sweep networks
+  { name = "uniform_n100", num_sensors = 100 },
+  { name = "gauss_n100_h4", num_sensors = 100, deployment_mode = "gaussian_hotspot", hotspot_count = 4, hotspot_std_m = 25.0 },
+  { name = "gauss_n1000_h4", num_sensors = 1000, deployment_mode = "gaussian_hotspot", hotspot_count = 4, hotspot_std_m = 25.0 },
+  { name = "gauss_n1000_h3_c300", num_sensors = 1000, deployment_mode = "gaussian_hotspot", hotspot_count = 3, hotspot_std_m = 25.0, max_cluster_size = 300 },
+  { name = "gauss_n1000_h5_c150", num_sensors = 1000, deployment_mode = "gaussian_hotspot", hotspot_count = 5, hotspot_std_m = 25.0, max_cluster_size = 150 },
+  { name = "gauss_n1000_h5_c100", num_sensors = 1000, deployment_mode = "gaussian_hotspot", hotspot_count = 5, hotspot_std_m = 25.0, max_cluster_size = 100 },
+  { name = "gauss_n1000_h15_c75", num_sensors = 1000, deployment_mode = "gaussian_hotspot", hotspot_count = 15, hotspot_std_m = 25.0, max_cluster_size = 75 },
+]

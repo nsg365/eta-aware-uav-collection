@@ -48,6 +48,9 @@ class EnvSettings:
     k_max: int = K_MAX          # observation slots; networks with more clusters cannot be run
     areas: tuple = ()           # training: field sizes [m] to draw networks from, at the density of
                                 # num_sensors per area_m^2 of topology_config; () = topology_config as is
+    networks: tuple = ()        # training: network types to draw from, each a dict with a "name" and
+                                # [topology] overrides (e.g. num_sensors, deployment_mode); the seed
+                                # picks one; () = topology_config as is
     risk_in_obs: bool = False   # A2+: lateness quantile per cluster in the observation
     beta_d: float = 1.0         # delivered data
     beta_e: float = 0.2         # UAV flight + hover energy
@@ -73,12 +76,17 @@ def network_size(s: EnvSettings, seed: int) -> tuple[int, float | None]:
 
 def ensure_topology(s: EnvSettings, seed: int) -> Path:
     """Phase 0 output for (num_sensors, seed), built once and shared by all env processes."""
-    n, area = network_size(s, seed)
-    size = f"n{n}" if area is None else f"n{n}_a{area:g}"
+    if s.networks:
+        net = dict(s.networks[seed % len(s.networks)])
+        size = net.pop("name")
+        overrides = {"num_sensors": s.num_sensors, **net, "seed": seed}
+    else:
+        n, area = network_size(s, seed)
+        size = f"n{n}" if area is None else f"n{n}_a{area:g}"
+        overrides = {"num_sensors": n, "seed": seed, "area_m": area}
     out = s.cache / "topologies" / Path(s.topology_config).stem / size / f"s{seed}"
     if not (out / "clusters.csv").exists():
-        p = TopologyParams.from_toml(s.topology_config, num_sensors=n, seed=seed,
-                                     area_m=area)
+        p = TopologyParams.from_toml(s.topology_config, **overrides)
         out.parent.mkdir(parents=True, exist_ok=True)
         tmp = Path(tempfile.mkdtemp(dir=out.parent))
         write_topology(tmp, p, *build_topology(p))

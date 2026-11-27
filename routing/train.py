@@ -35,7 +35,7 @@ ENV_KEYS = {"risk_in_obs", "beta_d", "beta_e", "beta_m", "beta_c", "beta_r",
             "promise_factors", "shaping", "k_max"}
 # Variant keys for training only (routing/ppo_extras.py): time-based discount (t0 seconds),
 # staying near the tour (bc_weight, bc_decay_steps), and the Phase 0 layout to train on.
-TRAIN_KEYS = {"t0", "bc_weight", "bc_decay_steps", "topology_config", "areas"}
+TRAIN_KEYS = {"t0", "bc_weight", "bc_decay_steps", "topology_config", "areas", "networks"}
 
 
 def load(config: Path) -> dict:
@@ -53,9 +53,10 @@ def variant_settings(cfg: dict, variant: dict, seeds: list[int]) -> EnvSettings:
     if topo:
         env["topology_config"] = REPO / topo
     areas = tuple(variant.get("areas", cfg["train"].get("areas", ())))
+    networks = tuple(variant.get("networks", cfg["train"].get("networks", ())))
     return EnvSettings(seeds=seeds, simulation=sim, num_sensors=cfg["train"]["num_sensors"],
                        gamma=cfg.get("ppo", {}).get("gamma", 0.99), t0=variant.get("t0", 15.0),
-                       areas=areas, **env)
+                       areas=areas, networks=networks, **env)
 
 
 def train_seeds(cfg: dict) -> list[int]:
@@ -184,6 +185,7 @@ def train(cfg: dict, variant: dict, algo: str, arch: str, warm: bool, timesteps:
                             capture_output=True, text=True).stdout.strip()
     meta = {"variant": variant["name"], "algo": algo, "arch": "scoring" if algo == "dqn" else arch,
             "warm_start": warm, "num_sensors": settings.num_sensors, "areas": list(settings.areas),
+            "networks": list(settings.networks),
             "simulation": settings.simulation,
             # sim keys that define the variant; evaluation applies them on top of its own
             "variant_simulation": {k: v for k, v in variant.items()
