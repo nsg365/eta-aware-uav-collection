@@ -1,5 +1,7 @@
 #include "world.h"
 
+#include "ns3/simulator.h"
+
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
@@ -301,6 +303,23 @@ World::Residual(const Sensor& s, double now) const
     return cfg.initialEnergy - SensorEnergyUsed(s, now);
 }
 
+double
+World::TrafficMultiplier(uint32_t cluster, double t) const
+{
+    for (const Burst& b : bursts)
+    {
+        if (b.start > t)
+        {
+            break;
+        }
+        if (b.cluster == cluster && t < b.end)
+        {
+            return cfg.burstMultiplier;
+        }
+    }
+    return 1.0;
+}
+
 void
 World::OnReading(Sensor& s, bool hopLost)
 {
@@ -308,6 +327,12 @@ World::OnReading(Sensor& s, bool hopLost)
     Sensor& ch = sensors[c.primary];
     s.generated++;
     c.generated++;
+    const bool inBurst = !bursts.empty() &&
+                         TrafficMultiplier(s.cluster, ns3::Simulator::Now().GetSeconds()) > 1.0;
+    if (inBurst)
+    {
+        c.burstGenerated++;
+    }
 
     if (s.id != ch.id)
     {
@@ -334,6 +359,10 @@ World::OnReading(Sensor& s, bool hopLost)
     if (c.buffer >= cfg.bufferCapacity)
     {
         c.overflow++;
+        if (inBurst)
+        {
+            c.burstOverflow++;
+        }
     }
     else
     {
@@ -352,8 +381,11 @@ World::WriteOutputs(double wallSeconds) const
 
     // ---- data
     uint64_t gen = 0, del = 0, ovf = 0, l154 = 0, lchd = 0, sent = 0, buf = 0;
+    uint64_t burstGen = 0, burstOvf = 0;
     for (const auto& c : clusters)
     {
+        burstGen += c.burstGenerated;
+        burstOvf += c.burstOverflow;
         gen += c.generated;
         del += c.delivered;
         ovf += c.overflow;
@@ -513,6 +545,9 @@ for (const auto& c : clusters)
       << ", \"overflow_ratio\": " << nan(gen > 0, double(ovf) / gen) << ", \"lost_154\": " << l154
       << ", \"lost_wifi\": " << lostWifi << ", \"lost_ch_dead\": " << lchd
       << ", \"in_buffer_at_end\": " << buf << "},\n"
+      << "  \"bursts\": {\"count\": " << bursts.size() << ", \"generated\": " << burstGen
+      << ", \"overflow\": " << burstOvf
+      << ", \"overflow_ratio\": " << nan(burstGen > 0, double(burstOvf) / burstGen) << "},\n"
       << "  \"reliability\": {\"primary_failures\": " << totalPrimaryFailures
       << ", \"backup_promotions\": " << totalBackupPromotions
       << ", \"failures_no_backup\": " << totalFailuresNoBackup
@@ -598,6 +633,13 @@ for (const auto& c : clusters)
            << s.generated << "," << SensorEnergyUsed(s, T) << ","
            << (s.wifiEnergy ? s.wifiEnergy->GetTotalEnergyConsumption() : 0.0) << ","
            << Residual(s, T) << "," << s.alive << "," << s.deathTime << "\n";
+    }
+
+    std::ofstream pb(cfg.outDir + "/bursts.csv");
+    pb << "cluster_id,start_s,end_s\n";
+    for (const auto& b : bursts)
+    {
+        pb << b.cluster << "," << b.start << "," << b.end << "\n";
     }
 
     // std::ofstream pv(cfg.outDir + "/visits.csv");

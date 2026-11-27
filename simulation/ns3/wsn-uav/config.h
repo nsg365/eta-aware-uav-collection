@@ -26,6 +26,11 @@ struct SimConfig
     uint32_t readingBytes = 32;    // application payload of one reading
     uint32_t bufferCapacity = 2000; // B_max at the CH, readings
     double lossProb154 = 0.0;      // Bernoulli loss on the abstracted 802.15.4 member->CH hop
+    // Event bursts: at random times (Poisson, burstsPerHour over the whole network) one random
+    // cluster's sensors read burstMultiplier times faster for burstDuration seconds.
+    double burstsPerHour = 0.0;    // 0 disables bursts
+    double burstDuration = 900.0;  // [s]
+    double burstMultiplier = 20.0; // reading-rate factor during a burst
 
     // Sensor energy (802.15.4 side is an analytic ledger; see docs/DESIGN_DECISIONS.md D1)
     double initialEnergy = 500.0; // E0 per sensor [J]; scaled down so depletion occurs in-horizon
@@ -108,6 +113,9 @@ struct SimConfig
         cmd.AddValue("readingBytes", "Bytes per reading", readingBytes);
         cmd.AddValue("bufferCapacity", "CH buffer capacity B_max [readings]", bufferCapacity);
         cmd.AddValue("lossProb154", "Loss probability of the abstracted 802.15.4 hop", lossProb154);
+        cmd.AddValue("burstsPerHour", "Event bursts per hour over the network (0 disables)", burstsPerHour);
+        cmd.AddValue("burstDuration", "Length of one event burst [s]", burstDuration);
+        cmd.AddValue("burstMultiplier", "Reading-rate factor of a bursting cluster", burstMultiplier);
         cmd.AddValue("initialEnergy", "Initial sensor energy E0 [J]", initialEnergy);
         cmd.AddValue("supplyVoltage", "Sensor supply voltage [V]", supplyVoltage);
         cmd.AddValue("rate154", "802.15.4 bit rate [bit/s]", rate154);
