@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 10, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "external", "num_sensors": 1000, "num_clusters": 15, "topology_dir": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_ch_sweep_15/n1000/s10/topology", "wall_time_s": 109.8175942},
+  "data": {"generated": 720770, "delivered": 710734, "pdr": 0.9860760021, "overflow": 385, "overflow_ratio": 0.0005341509774, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 0, "in_buffer_at_end": 9651},
+  "reliability": {"primary_failures": 0, "backup_promotions": 0, "failures_no_backup": 0, "failures_backup_dead": 0, "lost_during_failover": 0, "latest_failover_time_s": null, "retry_attempts": 43, "retry_successes": 35, "promise_violations": 35, "retry_exhaustions": 0, "rebootstrap_count": 0},
+  "energy": {"sensor_total_J": 3579.667929, "sensor_mean_J": 3.579667929, "primary_ch_mean_J": 58.87405225, "non_primary_mean_J": 2.737621467, "wifi_total_J": 2965.910347, "ieee802154_total_J": 181.7575817, "baseline_total_J": 432, "jain_cluster_residual": 0.9999952842},
+  "lifetime": {"first_node_death_s": 7200, "first_node_death_censored": true, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 0},
+  "uav": {"distance_m": 57810.38222, "flight_time_s": 5815.704011, "delay_time_s": 0, "hover_time_s": 1392.158266, "flight_energy_J_est": 872355.6017, "hover_energy_J_est": 236666.9051, "visits": 590, "contacts": 590, "failed_contacts": 0, "bytes_per_uav_joule": 20.5076884},
+  "wake": {"windows_scheduled": 590, "windows_opened": 575, "windows_met": 540, "windows_missed": 35, "discovery_contacts": 15, "meeting_success_rate": 0.9391304348, "missed_window_fraction": 0.06086956522, "planned_window_width_s": 40, "mean_window_listen_s": 3.528157566, "scheduled_window_energy_J": 608.6071802, "ch_wifi_awake_fraction": 0.02066419944},
+  "eta": {"n": 575, "mean_signed_error_s": -17.87210069, "mae_s": 19.76286503, "rmse_s": 21.12762128, "late_beyond_window_frac": 0.01565217391}
+}

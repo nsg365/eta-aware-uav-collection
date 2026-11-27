@@ -1,0 +1,8 @@
+cluster_id,size,generated,delivered,overflow,lost_154,lost_wifi,lost_ch_dead,in_buffer,primary_failures,backup_promotions,failures_no_backup,failures_backup_dead,lost_during_failover,last_failover_time_s,visits,contacts,failed_contacts,discovery_contacts,windows_scheduled,windows_opened,windows_met,windows_missed,retry_attempts,retry_successes,promise_violations,retry_exhaustions,rebootstrap_count,wifi_awake_s,scheduled_window_energy_J,residual_fraction
+0,255,183761,128018,54934,0,0,0,809,0,0,0,0,0,-1,64,64,0,1,64,63,63,0,0,0,0,0,0,24.0543,1.54385,0.995523
+1,491,353225,128620,222735,0,0,0,1870,0,0,0,0,0,-1,64,64,0,1,64,63,63,0,0,0,0,0,0,26.8685,2.64957,0.998634
+2,235,169057,127091,40650,0,0,0,1316,0,0,0,0,0,-1,64,64,0,1,64,63,63,0,0,0,0,0,0,30.17,4.376,0.997861
+3,233,168336,126287,40049,0,0,0,2000,0,0,0,0,0,-1,63,63,0,1,63,62,62,0,0,0,0,0,0,29.6555,2.0634,0.998575
+4,275,198158,126329,69829,0,0,0,2000,0,0,0,0,0,-1,63,63,0,1,63,62,62,0,0,0,0,0,0,33.0619,2.80039,0.996908
+5,269,194004,128339,65002,0,0,0,663,0,0,0,0,0,-1,64,64,0,1,64,63,63,0,0,0,0,0,0,20.0963,0.0251389,0.99527
+6,242,174419,126904,46082,0,0,0,1433,0,0,0,0,0,-1,64,64,0,1,64,63,63,0,0,0,0,0,0,27.7347,3.72941,0.996435

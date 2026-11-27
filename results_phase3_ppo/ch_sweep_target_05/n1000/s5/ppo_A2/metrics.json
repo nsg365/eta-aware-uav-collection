@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 5, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "external", "num_sensors": 1000, "num_clusters": 6, "topology_dir": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_ch_sweep_05/n1000/s5/topology", "wall_time_s": 66.30670987},
+  "data": {"generated": 719989, "delivered": 691646, "pdr": 0.9606341208, "overflow": 23216, "overflow_ratio": 0.03224493708, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 0, "in_buffer_at_end": 5127},
+  "reliability": {"primary_failures": 0, "backup_promotions": 0, "failures_no_backup": 0, "failures_backup_dead": 0, "lost_during_failover": 0, "latest_failover_time_s": null, "retry_attempts": 6, "retry_successes": 4, "promise_violations": 4, "retry_exhaustions": 0, "rebootstrap_count": 0},
+  "energy": {"sensor_total_J": 2052.798361, "sensor_mean_J": 2.052798361, "primary_ch_mean_J": 41.02205351, "non_primary_mean_J": 1.817571469, "wifi_total_J": 1474.590226, "ieee802154_total_J": 146.2081354, "baseline_total_J": 432, "jain_cluster_residual": 0.9999988599},
+  "lifetime": {"first_node_death_s": 7200, "first_node_death_censored": true, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 0},
+  "uav": {"distance_m": 65498.06104, "flight_time_s": 6559.026143, "delay_time_s": 0, "hover_time_s": 656.7767467, "flight_energy_J_est": 983853.9214, "hover_energy_J_est": 111652.0469, "visits": 376, "contacts": 376, "failed_contacts": 0, "bytes_per_uav_joule": 20.20315054},
+  "wake": {"windows_scheduled": 376, "windows_opened": 370, "windows_met": 366, "windows_missed": 4, "discovery_contacts": 6, "meeting_success_rate": 0.9891891892, "missed_window_fraction": 0.01081081081, "planned_window_width_s": 40, "mean_window_listen_s": 0.7449587104, "scheduled_window_energy_J": 82.69041686, "ch_wifi_awake_fraction": 0.009000121284},
+  "eta": {"n": 370, "mean_signed_error_s": -20.5728966, "mae_s": 21.41620483, "rmse_s": 21.79061485, "late_beyond_window_frac": 0.01081081081}
+}

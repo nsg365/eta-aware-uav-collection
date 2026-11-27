@@ -1,0 +1,2 @@
+wsn-uav: N=2000 K=7 wakeMode=scheduled routing=nearest-feasible seed=7 simTime=7200s
+wsn-uav: wrote results/phase3_gaussian_scaling/n2000/s7/nearest_feasible/metrics.json (wall 95.7815 s)

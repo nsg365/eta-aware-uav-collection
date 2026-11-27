@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 6, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "external", "num_sensors": 1000, "num_clusters": 10, "topology_dir": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_ch_sweep_10/n1000/s6/topology", "wall_time_s": 154.372359},
+  "data": {"generated": 719824, "delivered": 713342, "pdr": 0.990995021, "overflow": 881, "overflow_ratio": 0.001223910289, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 0, "in_buffer_at_end": 5601},
+  "reliability": {"primary_failures": 0, "backup_promotions": 0, "failures_no_backup": 0, "failures_backup_dead": 0, "lost_during_failover": 0, "latest_failover_time_s": null, "retry_attempts": 38, "retry_successes": 15, "promise_violations": 15, "retry_exhaustions": 0, "rebootstrap_count": 0},
+  "energy": {"sensor_total_J": 2950.560488, "sensor_mean_J": 2.950560488, "primary_ch_mean_J": 46.87127445, "non_primary_mean_J": 2.506916913, "wifi_total_J": 2356.647164, "ieee802154_total_J": 161.9133245, "baseline_total_J": 432, "jain_cluster_residual": 0.9999983539},
+  "lifetime": {"first_node_death_s": 7200, "first_node_death_censored": true, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 0},
+  "uav": {"distance_m": 59695.37732, "flight_time_s": 5983.184808, "delay_time_s": 0, "hover_time_s": 1232.392161, "flight_energy_J_est": 897477.7212, "hover_energy_J_est": 209506.6675, "visits": 566, "contacts": 566, "failed_contacts": 0, "bytes_per_uav_joule": 20.62083642},
+  "wake": {"windows_scheduled": 566, "windows_opened": 556, "windows_met": 541, "windows_missed": 15, "discovery_contacts": 10, "meeting_success_rate": 0.9730215827, "missed_window_fraction": 0.02697841727, "planned_window_width_s": 40, "mean_window_listen_s": 1.544179334, "scheduled_window_energy_J": 257.569113, "ch_wifi_awake_fraction": 0.01432987033},
+  "eta": {"n": 556, "mean_signed_error_s": -20.02545444, "mae_s": 22.06286545, "rmse_s": 22.94553818, "late_beyond_window_frac": 0.01978417266}
+}

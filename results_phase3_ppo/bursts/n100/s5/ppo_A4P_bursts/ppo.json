@@ -1,0 +1,7 @@
+{
+  "model": "models/phase3_ppo_bursts/A4P_ppo-scoring_ws.zip",
+  "return": 495.514,
+  "decisions": 487,
+  "inference_ms_mean": 4.2188,
+  "inference_ms_p95": 10.5635
+}

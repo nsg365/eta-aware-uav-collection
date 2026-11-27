@@ -1,0 +1,2 @@
+wsn-uav: N=2000 K=7 wakeMode=scheduled routing=tour seed=10 simTime=7200s
+wsn-uav: wrote results/phase3_gaussian_scaling/n2000/s10/tour/metrics.json (wall 718.016 s)

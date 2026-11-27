@@ -1,0 +1,7 @@
+{
+  "model": "models/phase3_ppo/A4_ppo-scoring_ws.zip",
+  "return": 213.169,
+  "decisions": 311,
+  "inference_ms_mean": 4.2798,
+  "inference_ms_p95": 7.1076
+}

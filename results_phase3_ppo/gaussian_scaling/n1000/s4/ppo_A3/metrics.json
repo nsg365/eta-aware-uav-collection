@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 4, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "external", "num_sensors": 1000, "num_clusters": 6, "topology_dir": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_gaussian_scaling/n1000/s4/topology", "wall_time_s": 92.970706},
+  "data": {"generated": 719456, "delivered": 705758, "pdr": 0.9809606147, "overflow": 10151, "overflow_ratio": 0.01410927145, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 42, "in_buffer_at_end": 3505},
+  "reliability": {"primary_failures": 1, "backup_promotions": 1, "failures_no_backup": 0, "failures_backup_dead": 0, "lost_during_failover": 0, "latest_failover_time_s": 1672, "retry_attempts": 42, "retry_successes": 28, "promise_violations": 28, "retry_exhaustions": 0, "rebootstrap_count": 0},
+  "energy": {"sensor_total_J": 2554.369346, "sensor_mean_J": 2.554369346, "primary_ch_mean_J": 166.4399009, "non_primary_mean_J": 1.565120664, "wifi_total_J": 1976.587657, "ieee802154_total_J": 146.113489, "baseline_total_J": 431.6682, "jain_cluster_residual": 0.9999971696},
+  "lifetime": {"first_node_death_s": 1670, "first_node_death_censored": false, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 1},
+  "uav": {"distance_m": 67806.26099, "flight_time_s": 6800.208231, "delay_time_s": 0, "hover_time_s": 416.2457549, "flight_energy_J_est": 1020031.235, "hover_energy_J_est": 70761.77833, "visits": 552, "contacts": 552, "failed_contacts": 0, "bytes_per_uav_joule": 20.70443772},
+  "wake": {"windows_scheduled": 552, "windows_opened": 545, "windows_met": 517, "windows_missed": 28, "discovery_contacts": 7, "meeting_success_rate": 0.9486238532, "missed_window_fraction": 0.05137614679, "planned_window_width_s": 40, "mean_window_listen_s": 5.169188634, "scheduled_window_energy_J": 845.1623417, "ch_wifi_awake_fraction": 0.06797144458},
+  "eta": {"n": 546, "mean_signed_error_s": -14.70027446, "mae_s": 16.73939773, "rmse_s": 17.82199524, "late_beyond_window_frac": 0.02014652015}
+}

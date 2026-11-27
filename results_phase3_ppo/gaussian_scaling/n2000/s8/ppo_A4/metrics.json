@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 8, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "external", "num_sensors": 2000, "num_clusters": 8, "topology_dir": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_gaussian_scaling/n2000/s8/topology", "wall_time_s": 176.9179316},
+  "data": {"generated": 1439703, "delivered": 897037, "pdr": 0.6230708695, "overflow": 531602, "overflow_ratio": 0.3692442122, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 86, "in_buffer_at_end": 10978},
+  "reliability": {"primary_failures": 1, "backup_promotions": 1, "failures_no_backup": 0, "failures_backup_dead": 0, "lost_during_failover": 0, "latest_failover_time_s": 2669, "retry_attempts": 2, "retry_successes": 2, "promise_violations": 2, "retry_exhaustions": 0, "rebootstrap_count": 0},
+  "energy": {"sensor_total_J": 3747.386803, "sensor_mean_J": 1.873693401, "primary_ch_mean_J": 57.2893607, "non_primary_mean_J": 1.651140521, "wifi_total_J": 2607.022569, "ieee802154_total_J": 276.6362138, "baseline_total_J": 863.72802, "jain_cluster_residual": 0.9999965425},
+  "lifetime": {"first_node_death_s": 2667, "first_node_death_censored": false, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 1},
+  "uav": {"distance_m": 63676.02661, "flight_time_s": 6363.915298, "delay_time_s": 0, "hover_time_s": 837.2409647, "flight_energy_J_est": 954587.2947, "hover_energy_J_est": 142330.964, "visits": 469, "contacts": 469, "failed_contacts": 0, "bytes_per_uav_joule": 26.16893626},
+  "wake": {"windows_scheduled": 469, "windows_opened": 461, "windows_met": 458, "windows_missed": 2, "discovery_contacts": 9, "meeting_success_rate": 0.9956521739, "missed_window_fraction": 0.004347826087, "planned_window_width_s": 40, "mean_window_listen_s": 1.563162422, "scheduled_window_energy_J": 215.7164142, "ch_wifi_awake_fraction": 0.01520526838},
+  "eta": {"n": 461, "mean_signed_error_s": -19.8760855, "mae_s": 19.96715898, "rmse_s": 20.44849544, "late_beyond_window_frac": 0}
+}

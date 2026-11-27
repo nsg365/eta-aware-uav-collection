@@ -1,0 +1,2 @@
+wsn-uav: N=2000 K=8 wakeMode=scheduled routing=data-greedy seed=8 simTime=7200s
+wsn-uav: wrote results/phase3_gaussian_scaling/n2000/s8/data_greedy/metrics.json (wall 133.106 s)

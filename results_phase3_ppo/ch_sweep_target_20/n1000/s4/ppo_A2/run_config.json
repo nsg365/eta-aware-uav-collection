@@ -1,0 +1,23 @@
+{
+  "variant": "ppo_A2",
+  "num_sensors": 1000,
+  "seed": 4,
+  "out": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_ch_sweep_20/n1000/s4/ppo_A2",
+  "simulation": {
+    "simTime": 7200.0,
+    "uavSpeed": 10.0,
+    "uavSpeedJitter": 0.1,
+    "wakeMode": "scheduled",
+    "etaMinSamples": 5,
+    "adaptiveLateMargin": 20.0,
+    "uavDelayProb": 0.0,
+    "uavDelayMin": 1.0,
+    "uavDelayMax": 5.0,
+    "routing": "ppo",
+    "model": "models/phase3_ppo/A2_ppo-scoring_ws.zip",
+    "etaQuantile": 0.95,
+    "topologyDir": "results/phase3_ch_sweep_20/n1000/s4/topology",
+    "outDir": "results/phase3_ch_sweep_20/n1000/s4/ppo_A2",
+    "seed": 4
+  }
+}

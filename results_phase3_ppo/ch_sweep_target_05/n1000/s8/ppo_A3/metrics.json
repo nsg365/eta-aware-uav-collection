@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 8, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "external", "num_sensors": 1000, "num_clusters": 6, "topology_dir": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_ch_sweep_05/n1000/s8/topology", "wall_time_s": 108.5272343},
+  "data": {"generated": 720260, "delivered": 685231, "pdr": 0.9513661733, "overflow": 27279, "overflow_ratio": 0.03787382334, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 0, "in_buffer_at_end": 7750},
+  "reliability": {"primary_failures": 0, "backup_promotions": 0, "failures_no_backup": 0, "failures_backup_dead": 0, "lost_during_failover": 0, "latest_failover_time_s": null, "retry_attempts": 84, "retry_successes": 84, "promise_violations": 84, "retry_exhaustions": 0, "rebootstrap_count": 0},
+  "energy": {"sensor_total_J": 3268.62839, "sensor_mean_J": 3.26862839, "primary_ch_mean_J": 166.9771314, "non_primary_mean_J": 2.280448292, "wifi_total_J": 2690.379557, "ieee802154_total_J": 146.2488334, "baseline_total_J": 432, "jain_cluster_residual": 0.9999984218},
+  "lifetime": {"first_node_death_s": 7200, "first_node_death_censored": true, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 0},
+  "uav": {"distance_m": 63672.77315, "flight_time_s": 6369.405121, "delay_time_s": 0, "hover_time_s": 841.9002529, "flight_energy_J_est": 955410.7682, "hover_energy_J_est": 143123.043, "visits": 397, "contacts": 397, "failed_contacts": 0, "bytes_per_uav_joule": 19.96059819},
+  "wake": {"windows_scheduled": 397, "windows_opened": 394, "windows_met": 307, "windows_missed": 84, "discovery_contacts": 6, "meeting_success_rate": 0.7851662404, "missed_window_fraction": 0.2148337596, "planned_window_width_s": 40, "mean_window_listen_s": 7.015457029, "scheduled_window_energy_J": 822.9131095, "ch_wifi_awake_fraction": 0.06737790681},
+  "eta": {"n": 391, "mean_signed_error_s": -12.29411183, "mae_s": 18.96997705, "rmse_s": 19.54023727, "late_beyond_window_frac": 0.06393861893}
+}

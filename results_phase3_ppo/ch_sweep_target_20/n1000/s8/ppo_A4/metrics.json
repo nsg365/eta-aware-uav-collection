@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 8, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "external", "num_sensors": 1000, "num_clusters": 23, "topology_dir": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_ch_sweep_20/n1000/s8/topology", "wall_time_s": 74.02904238},
+  "data": {"generated": 720260, "delivered": 705644, "pdr": 0.9797073279, "overflow": 98, "overflow_ratio": 0.0001360619776, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 0, "in_buffer_at_end": 14518},
+  "reliability": {"primary_failures": 0, "backup_promotions": 0, "failures_no_backup": 0, "failures_backup_dead": 0, "lost_during_failover": 0, "latest_failover_time_s": null, "retry_attempts": 11, "retry_successes": 5, "promise_violations": 7, "retry_exhaustions": 0, "rebootstrap_count": 0},
+  "energy": {"sensor_total_J": 2643.07967, "sensor_mean_J": 2.64307967, "primary_ch_mean_J": 22.35905879, "non_primary_mean_J": 2.178936866, "wifi_total_J": 1997.951727, "ieee802154_total_J": 213.1279429, "baseline_total_J": 432, "jain_cluster_residual": 0.9999489104},
+  "lifetime": {"first_node_death_s": 7200, "first_node_death_censored": true, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 0},
+  "uav": {"distance_m": 51949.69673, "flight_time_s": 5204.79024, "delay_time_s": 0, "hover_time_s": 1995.20976, "flight_energy_J_est": 780718.5361, "hover_energy_J_est": 339185.6591, "visits": 664, "contacts": 663, "failed_contacts": 0, "bytes_per_uav_joule": 20.16298188},
+  "wake": {"windows_scheduled": 663, "windows_opened": 644, "windows_met": 635, "windows_missed": 7, "discovery_contacts": 23, "meeting_success_rate": 0.9890965732, "missed_window_fraction": 0.01090342679, "planned_window_width_s": 40, "mean_window_listen_s": 0.5012014071, "scheduled_window_energy_J": 96.53139101, "ch_wifi_awake_fraction": 0.004606931161},
+  "eta": {"n": 640, "mean_signed_error_s": -22.23436086, "mae_s": 22.58399243, "rmse_s": 22.97661995, "late_beyond_window_frac": 0.003125}
+}

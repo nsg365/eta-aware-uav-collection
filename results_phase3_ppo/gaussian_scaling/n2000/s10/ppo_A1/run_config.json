@@ -1,0 +1,21 @@
+{
+  "variant": "ppo_A1",
+  "num_sensors": 2000,
+  "seed": 10,
+  "out": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_gaussian_scaling/n2000/s10/ppo_A1",
+  "simulation": {
+    "simTime": 7200.0,
+    "wakeMode": "scheduled",
+    "etaMinSamples": 5,
+    "adaptiveLateMargin": 20.0,
+    "uavSpeedJitter": 0.1,
+    "uavDelayProb": 0.0,
+    "chFailureRate": 2.78e-05,
+    "routing": "ppo",
+    "model": "models/phase3_ppo/A1_ppo-scoring_ws.zip",
+    "etaQuantile": 0.95,
+    "topologyDir": "results/phase3_gaussian_scaling/n2000/s10/topology",
+    "outDir": "results/phase3_gaussian_scaling/n2000/s10/ppo_A1",
+    "seed": 10
+  }
+}

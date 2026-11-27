@@ -48,6 +48,7 @@ constexpr int64_t STREAM_PHASE = 100002;
 constexpr int64_t STREAM_WIFI = 200000;
 constexpr int64_t STREAM_CLOCK_DRIFT = 100004;
 constexpr int64_t STREAM_CH_FAILURE = 100005;
+constexpr int64_t STREAM_BURST = 100006;
 
 World g_world;
 std::vector<Ptr<ExponentialRandomVariable>> g_interArrival;
@@ -67,7 +68,13 @@ GenerateReading(uint32_t id)
     }
     bool lost = g_world.cfg.lossProb154 > 0 && g_loss154->GetValue() < g_world.cfg.lossProb154;
     g_world.OnReading(s, lost);
-    Simulator::Schedule(Seconds(g_interArrival[id]->GetValue()), &GenerateReading, id);
+    // During an event burst the sensor's cluster reads cfg.burstMultiplier times faster.
+    double gap = g_interArrival[id]->GetValue();
+    if (!g_world.bursts.empty())
+    {
+        gap /= g_world.TrafficMultiplier(s.cluster, Simulator::Now().GetSeconds());
+    }
+    Simulator::Schedule(Seconds(gap), &GenerateReading, id);
 }
 
 void
@@ -508,6 +515,21 @@ main(int argc, char* argv[])
     g_loss154->SetStream(STREAM_LOSS154);
     g_chFailureRv = CreateObject<UniformRandomVariable>();
     g_chFailureRv->SetStream(STREAM_CH_FAILURE);
+    if (cfg.burstsPerHour > 0.0)
+    {
+        // Burst schedule, drawn before the run from its own stream so every routing policy with
+        // the same seed sees the same bursts.
+        auto gapRv = CreateObject<ExponentialRandomVariable>();
+        gapRv->SetAttribute("Mean", DoubleValue(3600.0 / cfg.burstsPerHour));
+        gapRv->SetStream(STREAM_BURST);
+        auto clusterRv = CreateObject<UniformRandomVariable>();
+        clusterRv->SetStream(STREAM_BURST + 1);
+        for (double t = gapRv->GetValue(); t < cfg.simTime; t += gapRv->GetValue())
+        {
+            auto k = static_cast<uint32_t>(clusterRv->GetInteger(0, static_cast<uint32_t>(K - 1)));
+            g_world.bursts.push_back({k, t, t + cfg.burstDuration});
+        }
+    }
     for (uint32_t id = 0; id < N; ++id)
     {
         auto rv = CreateObject<ExponentialRandomVariable>();

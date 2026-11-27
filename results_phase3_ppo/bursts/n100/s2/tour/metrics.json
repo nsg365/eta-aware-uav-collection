@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 2, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "tour", "num_sensors": 100, "num_clusters": 31, "topology_dir": "results/phase3_bursts_eval/n100/s2/topology", "wall_time_s": 4.318905167},
+  "data": {"generated": 154739, "delivered": 127920, "pdr": 0.826682349, "overflow": 22569, "overflow_ratio": 0.1458520476, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 12, "in_buffer_at_end": 4238},
+  "bursts": {"count": 10, "generated": 88222, "overflow": 22569, "overflow_ratio": 0.2558205436},
+  "reliability": {"primary_failures": 4, "backup_promotions": 4, "failures_no_backup": 0, "failures_backup_dead": 0, "lost_during_failover": 0, "latest_failover_time_s": 7087, "retry_attempts": 0, "retry_successes": 0, "promise_violations": 0, "retry_exhaustions": 0, "rebootstrap_count": 0},
+  "energy": {"sensor_total_J": 688.8220804, "sensor_mean_J": 6.888220804, "primary_ch_mean_J": 15.87909142, "non_primary_mean_J": 2.848844152, "wifi_total_J": 502.4440348, "ieee802154_total_J": 143.6433456, "baseline_total_J": 42.7347, "jain_cluster_residual": 0.9998919686},
+  "lifetime": {"first_node_death_s": 3153, "first_node_death_censored": false, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 4},
+  "uav": {"distance_m": 52429.99324, "flight_time_s": 5261.104299, "delay_time_s": 0, "hover_time_s": 1948.857033, "flight_energy_J_est": 789165.6448, "hover_energy_J_est": 331305.6956, "visits": 581, "contacts": 581, "failed_contacts": 0, "bytes_per_uav_joule": 3.653319681},
+  "wake": {"windows_scheduled": 581, "windows_opened": 547, "windows_met": 547, "windows_missed": 0, "discovery_contacts": 34, "meeting_success_rate": 1, "missed_window_fraction": 0, "planned_window_width_s": 40, "mean_window_listen_s": 0.234831259, "scheduled_window_energy_J": 38.5358096, "ch_wifi_awake_fraction": 0.003578121141},
+  "eta": {"n": 550, "mean_signed_error_s": -23.03466666, "mae_s": 23.03466666, "rmse_s": 25.93763992, "late_beyond_window_frac": 0}
+}

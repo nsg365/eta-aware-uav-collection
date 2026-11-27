@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 6, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "external", "num_sensors": 1000, "num_clusters": 6, "topology_dir": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_gaussian_scaling/n1000/s6/topology", "wall_time_s": 61.40037521},
+  "data": {"generated": 719196, "delivered": 632872, "pdr": 0.8799715238, "overflow": 81305, "overflow_ratio": 0.1130498501, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 186, "in_buffer_at_end": 4833},
+  "reliability": {"primary_failures": 4, "backup_promotions": 4, "failures_no_backup": 0, "failures_backup_dead": 0, "lost_during_failover": 38, "latest_failover_time_s": 6094, "retry_attempts": 84, "retry_successes": 62, "promise_violations": 62, "retry_exhaustions": 0, "rebootstrap_count": 0},
+  "energy": {"sensor_total_J": 4271.883644, "sensor_mean_J": 4.271883644, "primary_ch_mean_J": 198.9195538, "non_primary_mean_J": 3.09694801, "wifi_total_J": 3694.167312, "ieee802154_total_J": 146.0789127, "baseline_total_J": 431.63742, "jain_cluster_residual": 0.9999902971},
+  "lifetime": {"first_node_death_s": 4750, "first_node_death_censored": false, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 4},
+  "uav": {"distance_m": 56088.68355, "flight_time_s": 5610.186195, "delay_time_s": 0, "hover_time_s": 1605.815655, "flight_energy_J_est": 841527.9293, "hover_energy_J_est": 272988.6614, "visits": 412, "contacts": 412, "failed_contacts": 0, "bytes_per_uav_joule": 18.17102066},
+  "wake": {"windows_scheduled": 412, "windows_opened": 406, "windows_met": 340, "windows_missed": 62, "discovery_contacts": 10, "meeting_success_rate": 0.8457711443, "missed_window_fraction": 0.1542288557, "planned_window_width_s": 40, "mean_window_listen_s": 22.37481452, "scheduled_window_energy_J": 2710.840763, "ch_wifi_awake_fraction": 0.2132381241},
+  "eta": {"n": 406, "mean_signed_error_s": 0.8797173526, "mae_s": 23.55667814, "rmse_s": 27.46882422, "late_beyond_window_frac": 0.3399014778}
+}

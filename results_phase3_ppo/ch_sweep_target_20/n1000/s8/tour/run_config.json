@@ -1,0 +1,22 @@
+{
+  "variant": "tour",
+  "num_sensors": 1000,
+  "seed": 8,
+  "out": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_ch_sweep_20/n1000/s8/tour",
+  "simulation": {
+    "simTime": 7200.0,
+    "uavSpeed": 10.0,
+    "uavSpeedJitter": 0.1,
+    "wakeMode": "scheduled",
+    "etaMinSamples": 5,
+    "adaptiveLateMargin": 20.0,
+    "uavDelayProb": 0.0,
+    "uavDelayMin": 1.0,
+    "uavDelayMax": 5.0,
+    "routing": "tour",
+    "etaQuantile": 0.95,
+    "topologyDir": "results/phase3_ch_sweep_20/n1000/s8/topology",
+    "outDir": "results/phase3_ch_sweep_20/n1000/s8/tour",
+    "seed": 8
+  }
+}

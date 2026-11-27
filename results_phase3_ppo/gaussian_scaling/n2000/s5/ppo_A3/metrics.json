@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 5, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "external", "num_sensors": 2000, "num_clusters": 6, "topology_dir": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_gaussian_scaling/n2000/s5/topology", "wall_time_s": 58.61397496},
+  "data": {"generated": 1439560, "delivered": 603616, "pdr": 0.419305899, "overflow": 826789, "overflow_ratio": 0.5743345189, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 104, "in_buffer_at_end": 9051},
+  "reliability": {"primary_failures": 1, "backup_promotions": 1, "failures_no_backup": 0, "failures_backup_dead": 0, "lost_during_failover": 0, "latest_failover_time_s": 1405, "retry_attempts": 142, "retry_successes": 19, "promise_violations": 40, "retry_exhaustions": 21, "rebootstrap_count": 21},
+  "energy": {"sensor_total_J": 3353.33679, "sensor_mean_J": 1.676668395, "primary_ch_mean_J": 216.8002351, "non_primary_mean_J": 1.029355757, "wifi_total_J": 2220.946006, "ieee802154_total_J": 268.7386048, "baseline_total_J": 863.65218, "jain_cluster_residual": 0.999997679},
+  "lifetime": {"first_node_death_s": 1403, "first_node_death_censored": false, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 1},
+  "uav": {"distance_m": 58111.22903, "flight_time_s": 5806.29389, "delay_time_s": 0, "hover_time_s": 1405.075342, "flight_energy_J_est": 870944.0835, "hover_energy_J_est": 238862.8081, "visits": 302, "contacts": 302, "failed_contacts": 0, "bytes_per_uav_joule": 17.40457024},
+  "wake": {"windows_scheduled": 302, "windows_opened": 295, "windows_met": 255, "windows_missed": 40, "discovery_contacts": 28, "meeting_success_rate": 0.8644067797, "missed_window_fraction": 0.1355932203, "planned_window_width_s": 40, "mean_window_listen_s": 12.06024822, "scheduled_window_energy_J": 1067.331968, "ch_wifi_awake_fraction": 0.08679795801},
+  "eta": {"n": 296, "mean_signed_error_s": -7.010886502, "mae_s": 28.62304458, "rmse_s": 42.61781368, "late_beyond_window_frac": 0.1114864865}
+}

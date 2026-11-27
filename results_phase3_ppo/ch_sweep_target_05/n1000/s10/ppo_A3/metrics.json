@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 10, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "external", "num_sensors": 1000, "num_clusters": 6, "topology_dir": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_ch_sweep_05/n1000/s10/topology", "wall_time_s": 136.8979392},
+  "data": {"generated": 720770, "delivered": 717842, "pdr": 0.9959376778, "overflow": 398, "overflow_ratio": 0.0005521872442, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 0, "in_buffer_at_end": 2530},
+  "reliability": {"primary_failures": 0, "backup_promotions": 0, "failures_no_backup": 0, "failures_backup_dead": 0, "lost_during_failover": 0, "latest_failover_time_s": null, "retry_attempts": 72, "retry_successes": 57, "promise_violations": 57, "retry_exhaustions": 0, "rebootstrap_count": 0},
+  "energy": {"sensor_total_J": 3211.985536, "sensor_mean_J": 3.211985536, "primary_ch_mean_J": 171.0285799, "non_primary_mean_J": 2.199008106, "wifi_total_J": 2633.635894, "ieee802154_total_J": 146.349642, "baseline_total_J": 432, "jain_cluster_residual": 0.9999965787},
+  "lifetime": {"first_node_death_s": 7200, "first_node_death_censored": true, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 0},
+  "uav": {"distance_m": 63897.22895, "flight_time_s": 6409.878884, "delay_time_s": 0, "hover_time_s": 802.1502229, "flight_energy_J_est": 961481.8326, "hover_energy_J_est": 136365.5379, "visits": 694, "contacts": 694, "failed_contacts": 0, "bytes_per_uav_joule": 20.92362255},
+  "wake": {"windows_scheduled": 694, "windows_opened": 688, "windows_met": 631, "windows_missed": 57, "discovery_contacts": 6, "meeting_success_rate": 0.9171511628, "missed_window_fraction": 0.08284883721, "planned_window_width_s": 40, "mean_window_listen_s": 4.19333153, "scheduled_window_energy_J": 865.5036277, "ch_wifi_awake_fraction": 0.06915926877},
+  "eta": {"n": 688, "mean_signed_error_s": -15.75297509, "mae_s": 19.56335315, "rmse_s": 20.6159936, "late_beyond_window_frac": 0.0363372093}
+}

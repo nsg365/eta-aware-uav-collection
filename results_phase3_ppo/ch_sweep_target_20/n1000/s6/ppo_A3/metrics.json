@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 6, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "external", "num_sensors": 1000, "num_clusters": 17, "topology_dir": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_ch_sweep_20/n1000/s6/topology", "wall_time_s": 43.444156},
+  "data": {"generated": 719824, "delivered": 707552, "pdr": 0.9829513881, "overflow": 38, "overflow_ratio": 5.279068217e-05, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 0, "in_buffer_at_end": 12234},
+  "reliability": {"primary_failures": 0, "backup_promotions": 0, "failures_no_backup": 0, "failures_backup_dead": 0, "lost_during_failover": 0, "latest_failover_time_s": null, "retry_attempts": 13, "retry_successes": 9, "promise_violations": 9, "retry_exhaustions": 0, "rebootstrap_count": 0},
+  "energy": {"sensor_total_J": 2635.005234, "sensor_mean_J": 2.635005234, "primary_ch_mean_J": 31.70054018, "non_primary_mean_J": 2.132345932, "wifi_total_J": 2013.544738, "ieee802154_total_J": 189.4604959, "baseline_total_J": 432, "jain_cluster_residual": 0.9999973474},
+  "lifetime": {"first_node_death_s": 7200, "first_node_death_censored": true, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 0},
+  "uav": {"distance_m": 57826.05183, "flight_time_s": 5786.240375, "delay_time_s": 0, "hover_time_s": 1432.308585, "flight_energy_J_est": 867936.0563, "hover_energy_J_est": 243492.4594, "visits": 500, "contacts": 500, "failed_contacts": 0, "bytes_per_uav_joule": 20.37167814},
+  "wake": {"windows_scheduled": 500, "windows_opened": 483, "windows_met": 474, "windows_missed": 9, "discovery_contacts": 17, "meeting_success_rate": 0.9813664596, "missed_window_fraction": 0.01863354037, "planned_window_width_s": 40, "mean_window_listen_s": 1.630279496, "scheduled_window_energy_J": 236.2274989, "ch_wifi_awake_fraction": 0.008727232244},
+  "eta": {"n": 483, "mean_signed_error_s": -20.77421931, "mae_s": 21.3981211, "rmse_s": 22.48595319, "late_beyond_window_frac": 0.008281573499}
+}

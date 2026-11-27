@@ -1,0 +1,21 @@
+{
+  "variant": "ppo_A4P",
+  "num_sensors": 2000,
+  "seed": 1,
+  "out": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_gaussian_scaling/n2000/s1/ppo_A4P",
+  "simulation": {
+    "simTime": 7200.0,
+    "wakeMode": "scheduled",
+    "etaMinSamples": 5,
+    "adaptiveLateMargin": 20.0,
+    "uavSpeedJitter": 0.1,
+    "uavDelayProb": 0.0,
+    "chFailureRate": 2.78e-05,
+    "routing": "ppo",
+    "model": "models/phase3_fixes/C_ppo-scoring_ws.zip",
+    "etaQuantile": 0.95,
+    "topologyDir": "results/phase3_gaussian_scaling/n2000/s1/topology",
+    "outDir": "results/phase3_gaussian_scaling/n2000/s1/ppo_A4P",
+    "seed": 1
+  }
+}

@@ -1,0 +1,68 @@
+# Event bursts: the 10 held-out uniform networks (100 sensors) with sir's noise and 4 bursts per
+# hour (one random cluster reads 20x faster for 30 min). Same settings as the training config
+# configs/phase3_ppo_bursts.toml. The A4/A4P models trained without bursts are included to show
+# what training on bursts adds.
+#   python3 -m experiments.run_experiment configs/phase3_bursts_eval.toml -j 8
+#   python3 -m analysis.aggregate results/phase3_bursts_eval/runs.csv
+
+[experiment]
+name = "phase3_bursts_eval"
+num_sensors = [100]
+seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+[topology]                    # must match configs/default.toml, which training used
+area_m = 500.0
+sensor_range_m = 80.0
+dbscan_kappa = 0.8
+dbscan_min_samples = 3
+uav_range_m = 30.0
+alpha = 0.5
+min_candidates = 2
+depot_x = 0.0
+depot_y = 0.0
+
+[simulation]
+simTime = 7200.0
+wakeMode = "scheduled"
+uavSpeedJitter = 0.1
+uavDelayProb = 0.0
+chFailureRate = 2.78e-5
+burstsPerHour = 4.0
+burstDuration = 1800.0
+burstMultiplier = 20.0
+
+[[variant]]
+name = "tour"
+routing = "tour"
+
+[[variant]]
+name = "nearest_feasible"
+routing = "nearest-feasible"
+
+[[variant]]
+name = "data_greedy"
+routing = "data-greedy"
+
+[[variant]]
+name = "energy_data_score"
+routing = "energy-data-score"
+
+[[variant]]
+name = "ppo_A4"               # trained without bursts
+routing = "ppo"
+model = "models/phase3_ppo/A4_ppo-scoring_ws.zip"
+
+[[variant]]
+name = "ppo_A4P"              # trained without bursts
+routing = "ppo"
+model = "models/phase3_fixes/C_ppo-scoring_ws.zip"
+
+[[variant]]
+name = "ppo_A4P_bursts"       # trained on bursts
+routing = "ppo"
+model = "models/phase3_ppo_bursts/A4P_ppo-scoring_ws.zip"
+
+[[variant]]
+name = "ppo_A4Pb_bursts"      # trained on bursts, copying step fades out by 100k decisions
+routing = "ppo"
+model = "models/phase3_ppo_bursts/A4Pb_ppo-scoring_ws.zip"

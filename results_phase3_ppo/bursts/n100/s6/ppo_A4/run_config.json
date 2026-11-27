@@ -1,0 +1,21 @@
+{
+  "variant": "ppo_A4",
+  "num_sensors": 100,
+  "seed": 6,
+  "out": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_bursts_eval/n100/s6/ppo_A4",
+  "simulation": {
+    "simTime": 7200.0,
+    "wakeMode": "scheduled",
+    "uavSpeedJitter": 0.1,
+    "uavDelayProb": 0.0,
+    "chFailureRate": 2.78e-05,
+    "burstsPerHour": 4.0,
+    "burstDuration": 1800.0,
+    "burstMultiplier": 20.0,
+    "routing": "ppo",
+    "model": "models/phase3_ppo/A4_ppo-scoring_ws.zip",
+    "topologyDir": "results/phase3_bursts_eval/n100/s6/topology",
+    "outDir": "results/phase3_bursts_eval/n100/s6/ppo_A4",
+    "seed": 6
+  }
+}

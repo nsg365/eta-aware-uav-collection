@@ -326,3 +326,28 @@ with only the variants that have no `.zip` yet. With fewer cores, add `--n-envs 
 of each variant) on a branch and open a PR, with the finished-variant lines of `train_sir.log`
 in the PR description (do not commit the log). Evaluation (Gaussian
 100/1000/2000 and the CH sweep) is then rerun with the new models on the Phase 3 side.
+
+## 13. Event bursts: can PPO beat the tour when traffic changes over time? (28 Nov)
+
+The simulator now has event bursts (`burstsPerHour`, `burstDuration`, `burstMultiplier` in
+`config.h`, off by default): at random times one random cluster's sensors read faster for a
+while. Every policy with the same seed sees the same bursts. Setting used: 100-sensor uniform
+networks, sir's noise, 4 bursts per hour, 20x for 30 min. A bursting cluster fills its buffer
+in about 5 min and one tour lap takes about 7 min, so the tour loses data at every burst.
+
+A4P was trained on this (`configs/phase3_ppo_bursts.toml`, promise lengths 0.5–1.5x of a lap)
+twice: with the usual copying step (A4P) and with the copying step fading out after 100k of
+300k decisions (A4Pb). Evaluation: `configs/phase3_bursts_eval.toml`, 10 held-out networks.
+
+| Policy | PDR | PDR minus tour | Burst data lost | On-time |
+|---|---|---|---|---|
+| Tour | 0.817 | — | 28 % | 100 % |
+| Data greedy | 0.624 | −19.3 ± 5.0 | 53 % | 25 % |
+| A4P trained without bursts | 0.762 | −5.5 ± 2.3 | 37 % | 84 % |
+| A4P trained on bursts | 0.817 | 0.0 (identical to the tour) | 28 % | 100 % |
+| A4Pb trained on bursts | 0.772 | −4.5 ± 1.9 | 33 % | 81 % |
+
+PPO either follows the tour exactly or leaves it and does worse: every detour to a full cluster
+breaks promises made to the others, and the UAV only learns of a burst at its next visit to
+that cluster. To beat the tour a policy would need earlier news of a burst or a way to change
+promises already made. All tables and plots: `results_phase3_ppo/README.md`.

@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "run": {"seed": 5, "sim_time_s": 7200, "wake_mode": "scheduled", "routing": "external", "num_sensors": 1000, "num_clusters": 4, "topology_dir": "/Users/nihar/Downloads/College/7th_Sem/MLOWN/wsn-uav/results/phase3_gaussian_scaling/n1000/s5/topology", "wall_time_s": 8.633806375},
+  "data": {"generated": 719460, "delivered": 469498, "pdr": 0.652569983, "overflow": 245222, "overflow_ratio": 0.3408417424, "lost_154": 0, "lost_wifi": 0, "lost_ch_dead": 43, "in_buffer_at_end": 4697},
+  "reliability": {"primary_failures": 1, "backup_promotions": 1, "failures_no_backup": 0, "failures_backup_dead": 0, "lost_during_failover": 0, "latest_failover_time_s": 2106, "retry_attempts": 14, "retry_successes": 4, "promise_violations": 5, "retry_exhaustions": 1, "rebootstrap_count": 1},
+  "energy": {"sensor_total_J": 1288.364903, "sensor_mean_J": 1.288364903, "primary_ch_mean_J": 155.1768214, "non_primary_mean_J": 0.6703389729, "wifi_total_J": 718.4294393, "ieee802154_total_J": 138.2412233, "baseline_total_J": 431.69424, "jain_cluster_residual": 0.9999998674},
+  "lifetime": {"first_node_death_s": 2104, "first_node_death_censored": false, "dead_fraction_x": 0.1, "lifetime_x_s": 7200, "lifetime_x_censored": true, "dead_nodes_at_end": 1},
+  "uav": {"distance_m": 69803.65403, "flight_time_s": 6967.436527, "delay_time_s": 0, "hover_time_s": 250.5760913, "flight_energy_J_est": 1045115.479, "hover_energy_J_est": 42597.93553, "visits": 235, "contacts": 235, "failed_contacts": 0, "bytes_per_uav_joule": 13.81240297},
+  "wake": {"windows_scheduled": 235, "windows_opened": 230, "windows_met": 225, "windows_missed": 5, "discovery_contacts": 6, "meeting_success_rate": 0.9782608696, "missed_window_fraction": 0.02173913043, "planned_window_width_s": 40, "mean_window_listen_s": 7.715166716, "scheduled_window_energy_J": 532.3465034, "ch_wifi_awake_fraction": 0.06468536015},
+  "eta": {"n": 231, "mean_signed_error_s": -12.68189708, "mae_s": 15.36073711, "rmse_s": 18.74372887, "late_beyond_window_frac": 0.02164502165}
+}
