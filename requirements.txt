@@ -7,8 +7,8 @@ pandas==3.0.2
 scikit-learn==1.7.2
 pytest==9.1.1
 
-# Phase 3 (PPO). Not needed yet; uncomment when Phase 3 starts. torch is a large download.
-# gymnasium==1.2.3
-# stable-baselines3==2.8.0
-# sb3-contrib==2.8.0
-# torch==2.11.0
+# Phase 3 (PPO training and evaluation). torch is a large download.
+gymnasium==1.2.3
+stable-baselines3==2.8.0
+sb3-contrib==2.8.0
+torch==2.11.0

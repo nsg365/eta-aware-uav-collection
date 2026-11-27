@@ -294,3 +294,35 @@ PDR (%), mean of the 10 networks:
 - A3 (no risk term) is again the weakest PPO variant, 1–2.6 points behind at 6 and 20 clusters.
 - The same sweep with the older noise (speed std 1 m/s) gave the same picture; every number
   moved by under 2 points.
+
+## 12. Retraining on sir's setting (steps for whoever runs it)
+
+`configs/phase3_ppo_sir.toml` retrains the same variants with sir's noise (UAV speed uniform
+9–11 m/s per leg, no extra delays, CH failures on). A1–A4P train on 100-sensor networks
+(uniform and 4 Gaussian hotspots, alternating by seed). A4M is A4 trained on the full mix we
+report on (uniform 100, Gaussian 100/1000 and the four CH-sweep networks, 3–37 clusters). The
+reward, training fixes and seeds (train 101–300, evaluation 1–10) are unchanged.
+
+**1. Setup** (once). Pull main, then:
+
+    python3 -m venv .venv && source .venv/bin/activate
+    pip install -r requirements.txt               # now includes torch, stable-baselines3, sb3-contrib
+    (cd ../ns3-workspace/ns-3.47 && ./ns3 build wsn-uav)   # rebuild: the simulator needs uavSpeedJitter
+    python3 -m pytest -q                          # all tests should pass
+
+**2. Train** (one variant at a time; each uses 8 simulator processes). On a 10-core laptop:
+about 35–40 min for each of A1–A4P and 3–4 h for A4M. Run it overnight and keep the computer
+awake (`caffeinate -i` on a Mac; on WSL, keep Windows from sleeping):
+
+    for v in A4 A1 A2 A3 A4P A4M; do
+      python3 -m routing.train configs/phase3_ppo_sir.toml --arch scoring --warm-start --variant $v
+    done 2>&1 | tee train_sir.log
+
+Each finished variant prints one line (`... steps in N min -> models/phase3_ppo_sir/...`) with
+the warm start's tour agreement (should be about 0.99). If the run stops, start the loop again
+with only the variants that have no `.zip` yet. With fewer cores, add `--n-envs 4`.
+
+**3. Hand back.** Commit `models/phase3_ppo_sir/` (the `.zip`, `.json` and `_train.monitor.csv`
+of each variant) on a branch and open a PR, with the finished-variant lines of `train_sir.log`
+in the PR description (do not commit the log). Evaluation (Gaussian
+100/1000/2000 and the CH sweep) is then rerun with the new models on the Phase 3 side.
