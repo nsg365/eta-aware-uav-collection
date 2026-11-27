@@ -37,4 +37,4 @@ failoverOnMissedMeeting = true
 
 [[variant]]
 name = "a8_missed_meeting"
-chFailureRate = 0.0
+chFailureRate = 2.78e-5

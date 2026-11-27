@@ -151,53 +151,47 @@ CheckPrimaryHeartbeats()
         Sensor& primary = g_world.sensors.at(c.primary);
         bool meetingMissed = false;
 
+        // Both the baseline and A8 use the same random primary-CH failure
+        // distribution. The ablation changes only the signal used for failover.
+        const double failureProbability =
+            1.0 - std::exp(-g_world.cfg.chFailureRate *
+                           g_world.cfg.heartbeatInterval);
+
+        if (primary.alive &&
+            g_world.cfg.chFailureRate > 0.0 &&
+            g_chFailureRv->GetValue() < failureProbability)
+        {
+            primary.alive = false;
+            primary.deathTime = now;
+
+            if (auto app = g_chApp.find(primary.id); app != g_chApp.end())
+            {
+                app->second->OnDeath();
+            }
+
+            NS_LOG_INFO(now << "s random primary failure injected for cluster "
+                            << c.id << ", primary sensor " << primary.id);
+        }
+
         if (g_world.cfg.failoverOnMissedMeeting)
         {
-            // A8: a newly recorded missed UAV meeting is the failure signal.
-            // Do not inject random CH failures or use missed-heartbeat counts here.
+            // A8: a newly recorded missed UAV meeting is the failover signal.
+            // Unlike the baseline, A8 does not use missed-heartbeat counts.
             meetingMissed = c.windowsMissed > c.lastMissedMeetingCount;
             c.lastMissedMeetingCount = c.windowsMissed;
 
-            if (meetingMissed && primary.alive)
+            if (meetingMissed)
             {
-                primary.alive = false;
-                primary.deathTime = now;
-
-                // Retire the old CH app and preserve its buffer-loss accounting
-                // before attempting to promote the backup.
-                if (auto app = g_chApp.find(primary.id); app != g_chApp.end())
-                {
-                    app->second->OnDeath();
-                }
-
+                // A missed meeting is a logical failure declaration in A8, not
+                // proof that the physical sensor has died. Retire the CH app
+                // only if a live backup can actually take over below.
                 NS_LOG_INFO(now << "s missed UAV meeting triggered failover for cluster "
                                 << c.id << ", primary sensor " << primary.id);
             }
         }
         else
         {
-            // Baseline: inject primary CH failures according to the configured
-            // exponential hazard rate, then detect them through missed heartbeats.
-            const double failureProbability =
-                1.0 - std::exp(-g_world.cfg.chFailureRate *
-                               g_world.cfg.heartbeatInterval);
-
-            if (primary.alive &&
-                g_world.cfg.chFailureRate > 0.0 &&
-                g_chFailureRv->GetValue() < failureProbability)
-            {
-                primary.alive = false;
-                primary.deathTime = now;
-
-                if (auto app = g_chApp.find(primary.id); app != g_chApp.end())
-                {
-                    app->second->OnDeath();
-                }
-
-                NS_LOG_INFO(now << "s random primary failure injected for cluster "
-                                << c.id << ", primary sensor " << primary.id);
-            }
-
+            // Baseline: detect actual CH failures through missed heartbeats.
             if (!primary.alive)
             {
                 c.missedHeartbeatCount++;
@@ -232,6 +226,19 @@ CheckPrimaryHeartbeats()
         if (g_world.cfg.enableBackupCH && c.backup >= 0)
         {
             const uint32_t backupId = static_cast<uint32_t>(c.backup);
+
+            // For a logical A8 failover, retire the old CH application only
+            // after confirming that its backup is alive. OnDeath() accounts
+            // for the old CH buffer; PromoteBackup() then credits the replicated
+            // portion and records only the unrecovered loss.
+            if (g_world.sensors.at(backupId).alive &&
+                g_world.sensors.at(failedPrimaryId).alive)
+            {
+                if (auto app = g_chApp.find(failedPrimaryId); app != g_chApp.end())
+                {
+                    app->second->OnDeath();
+                }
+            }
 
             if (g_world.PromoteBackup(c.id, now))
             {

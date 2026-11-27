@@ -1,17 +1,5 @@
-"""Run a trained Phase 3 policy (PPO or DQN) as an ordinary experiment variant.
 
-experiments/run_experiment.py calls run_ppo() for every variant with routing = "ppo", e.g.
-
-    [[variant]]
-    name = "er_ppo"
-    routing = "ppo"
-    model = "models/phase3_ppo/A4.zip"
-
-The model's <name>.json says how its observation and reward were built and which simulator
-settings define the variant (e.g. adaptiveWindow = false for A1/A2); those are applied on top of
-the experiment's [simulation] table. The policy acts deterministically (most likely action).
-Besides the usual ns-3 outputs, each run writes ppo.json: return, decisions and inference time.
-"""
+"""Evaluate a trained Phase 3 policy (PPO, DQN, or tabular Q-learning)."""
 
 from __future__ import annotations
 
@@ -32,51 +20,123 @@ _lock = threading.Lock()
 
 
 def load_model(path: str | Path) -> tuple:
-    """(act(obs, mask) -> action, meta) for a MaskablePPO .zip or a masked-DQN .pt."""
+    """Return (act(obs, mask) -> action, metadata)."""
     path = (REPO / path).resolve()
+
     with _lock:
         if path not in _models:
-            torch.set_num_threads(1)  # many runs in parallel; each inference is tiny
-            meta = json.loads(path.with_suffix(".json").read_text())
-            if meta.get("algo") == "dqn":
-                from routing.dqn import MaskedDQN
-                net = MaskedDQN.load_scorer(path)
+            torch.set_num_threads(1)
 
-                @torch.no_grad()
-                def act(obs, mask, net=net):
-                    q = net(torch.as_tensor(obs, dtype=torch.float32)[None])[0]
-                    return int(q.masked_fill(~torch.as_tensor(mask), -torch.inf).argmax())
+            # Tabular Q-learning stores its Q-table and metadata together.
+            if path.suffix == ".json":
+                from routing.q_learning import Discretizer, TabularQLearning
+
+                agent, meta = TabularQLearning.load(path)
+                discretizer = Discretizer(meta["q_learning"]["bins"])
+
+                def act(obs, mask, agent=agent, discretizer=discretizer):
+                    state = discretizer(obs)
+                    return agent.act(state, mask, explore=False)
+
             else:
-                model = MaskablePPO.load(path, device="cpu")
+                # PPO and DQN store metadata in a separate .json sidecar.
+                meta = json.loads(path.with_suffix(".json").read_text())
 
-                def act(obs, mask, model=model):
-                    return int(model.predict(obs, action_masks=mask, deterministic=True)[0])
+                if meta.get("algo") == "dqn":
+                    from routing.dqn import MaskedDQN
+
+                    net = MaskedDQN.load_scorer(path)
+
+                    @torch.no_grad()
+                    def act(obs, mask, net=net):
+                        q = net(torch.as_tensor(obs, dtype=torch.float32)[None])[0]
+                        mask_tensor = torch.as_tensor(mask, dtype=torch.bool)
+                        return int(q.masked_fill(~mask_tensor, -torch.inf).argmax())
+
+                else:
+                    model = MaskablePPO.load(path, device="cpu")
+
+                    def act(obs, mask, model=model):
+                        action, _ = model.predict(
+                            obs,
+                            action_masks=mask,
+                            deterministic=True,
+                        )
+                        return int(action)
+
             _models[path] = (act, meta)
+
         return _models[path]
 
 
 def run_ppo(model_path: str | Path, simulation: dict) -> dict:
-    """One evaluation episode. `simulation` is the job's ns-3 table (topologyDir, outDir, seed...)."""
+    """Run one evaluation episode using a trained routing policy."""
     act, meta = load_model(model_path)
-    sim = {k: v for k, v in simulation.items()
-           if k not in ("routing", "model", "topologyDir", "outDir", "seed")}
+
+    # Start with the experiment's simulation settings, then apply the
+    # model variant's settings so evaluation matches the trained variant.
+    sim = {
+        k: v
+        for k, v in simulation.items()
+        if k not in ("routing", "model", "topologyDir", "outDir", "seed")
+    }
     sim.update(meta.get("variant_simulation", {}))
-    settings = EnvSettings(seeds=[int(simulation["seed"])], simulation=sim, **meta["env"])
+
+    env_meta = dict(meta["env"])
+    if isinstance(env_meta.get("promise_factors"), list):
+        env_meta["promise_factors"] = tuple(env_meta["promise_factors"])
+
+    settings = EnvSettings(
+        seeds=[int(simulation["seed"])],
+        simulation=sim,
+        num_sensors=int(meta.get("num_sensors", 100)),
+        **env_meta,
+    )
+
     env = WsnUavEnv(settings)
     out = REPO / simulation["outDir"]
-    obs, _ = env.reset(options={"seed": int(simulation["seed"]),
-                                "topology": REPO / simulation["topologyDir"], "out": out})
-    total, decisions, infer, done = 0.0, 0, [], False
-    while not done:
-        t = time.perf_counter()
-        with _lock:  # the models are shared between threads
-            action = act(obs, env.action_masks())
-        infer.append(time.perf_counter() - t)
-        obs, reward, done, _, _ = env.step(int(action))
-        total += reward
-        decisions += 1
-    info = {"model": str(model_path), "return": round(total, 3), "decisions": decisions,
-            "inference_ms_mean": round(1e3 * float(np.mean(infer)), 4),
-            "inference_ms_p95": round(1e3 * float(np.percentile(infer, 95)), 4)}
+    out.mkdir(parents=True, exist_ok=True)
+
+    total = 0.0
+    decisions = 0
+    infer = []
+
+    try:
+        obs, _ = env.reset(
+            options={
+                "seed": int(simulation["seed"]),
+                "topology": REPO / simulation["topologyDir"],
+                "out": out,
+            }
+        )
+
+        done = False
+        while not done:
+            mask = env.action_masks()
+
+            t = time.perf_counter()
+            with _lock:
+                action = act(obs, mask)
+            infer.append(time.perf_counter() - t)
+
+            obs, reward, terminated, truncated, _ = env.step(int(action))
+            done = bool(terminated or truncated)
+
+            total += float(reward)
+            decisions += 1
+
+    finally:
+        env.close()
+
+    info = {
+        "model": str(model_path),
+        "return": round(total, 3),
+        "decisions": decisions,
+        "inference_ms_mean": round(1e3 * float(np.mean(infer)), 4),
+        "inference_ms_p95": round(1e3 * float(np.percentile(infer, 95)), 4),
+    }
+
+    # Keep the existing filename and result structure for compatibility
+    # with the experiment runner's flattened CSV output.
     (out / "ppo.json").write_text(json.dumps(info, indent=2))
     return info

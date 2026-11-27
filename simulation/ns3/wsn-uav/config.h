@@ -1,7 +1,6 @@
 
 // Simulation configuration. Every field is a command-line argument of the same name;
 // experiments/run_experiment.py passes the [simulation] table of a TOML config verbatim.
-// Units are part of each description and are SI unless stated (s, m, m/s, W, J, A, dBm, dB).
 #ifndef WSN_UAV_CONFIG_H
 #define WSN_UAV_CONFIG_H
 
@@ -104,6 +103,9 @@ struct SimConfig
     double retryListen = 10.0;        // listen time of each retry window [s]; < retryInterval
     uint32_t maxMissedRetries = 5;    // M_max: misses before DISCOVERY
 
+    // Routing ablation
+    bool enableSurveyLap = true; // false for A9: disable initial survey lap
+
     void Register(ns3::CommandLine& cmd)
     {
         cmd.AddValue("topologyDir", "Directory with nodes.csv and clusters.csv (required)", topologyDir);
@@ -161,7 +163,7 @@ struct SimConfig
         cmd.AddValue("dutyPeriod", "Duty-cycle / discovery period T_b [s]", dutyPeriod);
         cmd.AddValue("dutyListen", "Listen time per duty period t_l [s]", dutyListen);
         cmd.AddValue("wakeHalfWidth", "Fixed scheduled wake-window half-width w [s]", wakeHalfWidth);
-        cmd.AddValue("adaptiveLateMargin", "Adaptive late-arrival wake margin [s]", adaptiveLateMargin);
+        cmd.AddValue("adaptiveLateMargin", "Adaptive late window margin [s]", adaptiveLateMargin);
         cmd.AddValue("adaptiveWindow", "Late window from the lateness quantile (else wakeHalfWidth)",
                      adaptiveWindow);
         cmd.AddValue("etaQuantile", "Empirical lateness percentile (0.80–0.99)", etaQuantile);
@@ -181,6 +183,10 @@ struct SimConfig
         cmd.AddValue("retryInterval", "Retry spacing Delta_r [s]", retryInterval);
         cmd.AddValue("retryListen", "Listen time of each retry window [s]", retryListen);
         cmd.AddValue("maxMissedRetries", "Maximum missed retries before DISCOVERY M_max", maxMissedRetries);
+
+        cmd.AddValue("enableSurveyLap",
+                     "Enable the initial fixed survey lap (A9 ablation)",
+                     enableSurveyLap);
     }
 };
 
