@@ -95,6 +95,7 @@ struct SimConfig
 
     // CH reliability and failover (paper Sec. III-F/G)
     bool enableBackupCH = true; // false for A7: disable backup CH functionality
+    bool failoverOnMissedMeeting = false; // true for A8: trigger failover on missed UAV meeting
     double chFailureRate = 0.0;       // random primary failure hazard [1/s]
     double heartbeatInterval = 1.0;   // primary -> backup heartbeat interval [s]
     uint32_t missedHeartbeats = 3;    // m_h: consecutive misses before takeover
@@ -170,6 +171,9 @@ struct SimConfig
         cmd.AddValue("enableBackupCH",
                      "Enable backup CH election, replication and failover",
                      enableBackupCH);
+        cmd.AddValue("failoverOnMissedMeeting",
+                     "Trigger primary failover on a missed UAV meeting (A8)",
+                     failoverOnMissedMeeting);
         cmd.AddValue("chFailureRate", "Primary CH random failure hazard [1/s]", chFailureRate);
         cmd.AddValue("heartbeatInterval", "Primary-to-backup heartbeat interval [s]", heartbeatInterval);
         cmd.AddValue("missedHeartbeats", "Consecutive missed heartbeats before backup takeover m_h", missedHeartbeats);

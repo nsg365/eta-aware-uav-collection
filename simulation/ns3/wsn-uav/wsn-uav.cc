@@ -141,134 +141,135 @@ CheckPrimaryHeartbeats()
 
     for (auto& c : g_world.clusters)
     {
-        // A detected failure remains latched if takeover fails. Successful takeover
-        // re-arms this cluster so a later promoted-primary failure is detectable.
+        // Keep a failed cluster latched if takeover fails. A successful takeover
+        // re-arms it so that the promoted primary can fail later as well.
         if (c.primaryFailureDetected)
         {
             continue;
         }
 
-        Sensor& primaryForFailure = g_world.sensors.at(c.primary);
+        Sensor& primary = g_world.sensors.at(c.primary);
+        bool meetingMissed = false;
 
-        // Inject primary CH failures according to an exponential hazard rate.
-        // Convert the configured rate [1/s] into probability per check interval.
-        const double failureProbability =
-            1.0 - std::exp(-g_world.cfg.chFailureRate *
-                           g_world.cfg.heartbeatInterval);
-
-        if (primaryForFailure.alive &&
-            g_world.cfg.chFailureRate > 0.0 &&
-            g_chFailureRv->GetValue() < failureProbability)
+        if (g_world.cfg.failoverOnMissedMeeting)
         {
-            primaryForFailure.alive = false;
-            primaryForFailure.deathTime = now;
+            // A8: a newly recorded missed UAV meeting is the failure signal.
+            // Do not inject random CH failures or use missed-heartbeat counts here.
+            meetingMissed = c.windowsMissed > c.lastMissedMeetingCount;
+            c.lastMissedMeetingCount = c.windowsMissed;
 
-            if (auto app = g_chApp.find(primaryForFailure.id);
-                app != g_chApp.end())
+            if (meetingMissed && primary.alive)
             {
-                app->second->OnDeath();
-            }
+                primary.alive = false;
+                primary.deathTime = now;
 
-            NS_LOG_INFO(
-                now << "s random primary failure injected for cluster "
-                    << c.id << ", primary sensor " << primaryForFailure.id);
-        }
-
-        const Sensor& primary = primaryForFailure;
-
-        if (!primary.alive)
-        {
-            c.missedHeartbeatCount++;
-
-            if (c.missedHeartbeatCount >= g_world.cfg.missedHeartbeats
-    && !c.primaryFailureDetected)
-            {
-                c.primaryFailureDetected = true;
-                c.primaryFailureDetectedTime = now;
-                c.primaryFailures++;
-
-                const uint32_t failedPrimaryId = c.primary;
-
-                NS_LOG_INFO(
-                    now << "s primary failure detected for cluster "
-                        << c.id << ", primary sensor " << failedPrimaryId);
-
-                // Attempt backup promotion.
-                if (g_world.cfg.enableBackupCH && c.backup >= 0)
+                // Retire the old CH app and preserve its buffer-loss accounting
+                // before attempting to promote the backup.
+                if (auto app = g_chApp.find(primary.id); app != g_chApp.end())
                 {
-                    const uint32_t backupId =
-                    static_cast<uint32_t>(c.backup);
+                    app->second->OnDeath();
+                }
 
-                    if (g_world.PromoteBackup(c.id, now))
-                    {
-                        // Remove the failed primary from the active CH app map.
-                        g_chApp.erase(failedPrimaryId);
-
-                        // Retrieve the promoted backup's Wi-Fi device and PHY.
-                        Ptr<WifiNetDevice> backupDevice =
-                        g_wifiDev.at(backupId);
-
-                        Ptr<WifiPhy> backupPhy =
-                            backupDevice->GetPhy();
-
-                        // Create a new CH application for the promoted backup.
-                        auto promotedApp = CreateObject<ClusterHeadApp>(
-                            &g_world,
-                            c.id,
-                            backupId,
-                            backupPhy,
-                            0.0,
-                            0.0);
-
-                        // Attach the application to the backup's node.
-                        backupDevice->GetNode()->AddApplication(promotedApp);
-
-                        // Start the application immediately at failover time.
-                        // Start/stop times are delays from when the app is added, not absolute times.
-                        promotedApp->SetStartTime(Seconds(0));
-                        promotedApp->SetStopTime(Seconds(g_world.cfg.simTime - now));
-
-                        // Register the promoted backup as the active CH.
-                        g_chApp[backupId] = promotedApp;
-
-                        // Synchronize the UAV's active-primary record.
-                        g_uavApp->SetActivePrimary(c.id, backupId);
-
-                        // Re-elect a feasible, live standby using the original Eq. (3)
-                        // score; all feasible candidates were radio-provisioned at setup.
-                        const int32_t replacementBackup = g_world.ElectBackup(c.id, now);
-                        c.missedHeartbeatCount = 0;
-                        c.primaryFailureDetected = false;
-
-                        NS_LOG_INFO(now << "s replacement backup for cluster " << c.id
-                                        << " is " << replacementBackup);
-
-                        NS_LOG_INFO(
-                            now << "s backup sensor " << backupId
-                                << " promoted to primary for cluster " << c.id);
-                    }
-                    else
-{
-    c.failuresBackupDead++;
-
-    NS_LOG_WARN(
-     now << "s backup promotion failed for cluster " << c.id
-         << " because backup sensor " << backupId << " is dead");
-}
+                NS_LOG_INFO(now << "s missed UAV meeting triggered failover for cluster "
+                                << c.id << ", primary sensor " << primary.id);
             }
-            else
-{
-    c.failuresNoBackup++;
-
-    NS_LOG_WARN(
-         now << "s no backup available for cluster " << c.id);
-}
-        }
         }
         else
         {
-            // A living primary is treated as having delivered its heartbeat.
-            c.missedHeartbeatCount = 0;
+            // Baseline: inject primary CH failures according to the configured
+            // exponential hazard rate, then detect them through missed heartbeats.
+            const double failureProbability =
+                1.0 - std::exp(-g_world.cfg.chFailureRate *
+                               g_world.cfg.heartbeatInterval);
+
+            if (primary.alive &&
+                g_world.cfg.chFailureRate > 0.0 &&
+                g_chFailureRv->GetValue() < failureProbability)
+            {
+                primary.alive = false;
+                primary.deathTime = now;
+
+                if (auto app = g_chApp.find(primary.id); app != g_chApp.end())
+                {
+                    app->second->OnDeath();
+                }
+
+                NS_LOG_INFO(now << "s random primary failure injected for cluster "
+                                << c.id << ", primary sensor " << primary.id);
+            }
+
+            if (!primary.alive)
+            {
+                c.missedHeartbeatCount++;
+            }
+            else
+            {
+                c.missedHeartbeatCount = 0;
+            }
+        }
+
+        const bool failureDetected = g_world.cfg.failoverOnMissedMeeting
+                                         ? meetingMissed
+                                         : (!primary.alive &&
+                                            c.missedHeartbeatCount >=
+                                                g_world.cfg.missedHeartbeats);
+
+        if (!failureDetected)
+        {
+            continue;
+        }
+
+        c.primaryFailureDetected = true;
+        c.primaryFailureDetectedTime = now;
+        c.primaryFailures++;
+
+        const uint32_t failedPrimaryId = c.primary;
+        NS_LOG_INFO(now << "s primary failure detected for cluster " << c.id
+                        << ", primary sensor " << failedPrimaryId);
+
+        // Attempt backup promotion. The same takeover path is used by the
+        // heartbeat baseline and A8; only the failure trigger differs.
+        if (g_world.cfg.enableBackupCH && c.backup >= 0)
+        {
+            const uint32_t backupId = static_cast<uint32_t>(c.backup);
+
+            if (g_world.PromoteBackup(c.id, now))
+            {
+                g_chApp.erase(failedPrimaryId);
+
+                Ptr<WifiNetDevice> backupDevice = g_wifiDev.at(backupId);
+                Ptr<WifiPhy> backupPhy = backupDevice->GetPhy();
+
+                auto promotedApp = CreateObject<ClusterHeadApp>(
+                    &g_world, c.id, backupId, backupPhy, 0.0, 0.0);
+                backupDevice->GetNode()->AddApplication(promotedApp);
+                promotedApp->SetStartTime(Seconds(0));
+                promotedApp->SetStopTime(Seconds(g_world.cfg.simTime - now));
+                g_chApp[backupId] = promotedApp;
+
+                g_uavApp->SetActivePrimary(c.id, backupId);
+
+                const int32_t replacementBackup = g_world.ElectBackup(c.id, now);
+                c.missedHeartbeatCount = 0;
+                c.lastMissedMeetingCount = c.windowsMissed;
+                c.primaryFailureDetected = false;
+
+                NS_LOG_INFO(now << "s replacement backup for cluster " << c.id
+                                << " is " << replacementBackup);
+                NS_LOG_INFO(now << "s backup sensor " << backupId
+                                << " promoted to primary for cluster " << c.id);
+            }
+            else
+            {
+                c.failuresBackupDead++;
+                NS_LOG_WARN(now << "s backup promotion failed for cluster " << c.id
+                                << " because backup sensor " << backupId << " is dead");
+            }
+        }
+        else
+        {
+            c.failuresNoBackup++;
+            NS_LOG_WARN(now << "s no backup available for cluster " << c.id);
         }
     }
 
@@ -276,7 +277,6 @@ CheckPrimaryHeartbeats()
         Seconds(g_world.cfg.heartbeatInterval),
         &CheckPrimaryHeartbeats);
 }
-
 Vector
 ReadDepot(const std::string& dir)
 {
