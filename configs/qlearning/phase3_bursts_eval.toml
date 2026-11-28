@@ -1,0 +1,39 @@
+# Q-learning baseline (Bouhamed et al., docs/Q_LEARNING.md) on the networks and noise of
+# configs/phase3_bursts_eval.toml, for the demo page. Results: results/qlearning_phase3_bursts_eval/
+# Event bursts: the 10 held-out uniform networks (100 sensors) with sir's noise and 4 bursts per
+# hour (one random cluster reads 20x faster for 30 min). Same settings as the training config
+# configs/phase3_ppo_bursts.toml. The A4/A4P models trained without bursts are included to show
+# what training on bursts adds.
+#   python3 -m experiments.run_experiment configs/phase3_bursts_eval.toml -j 8
+#   python3 -m analysis.aggregate results/phase3_bursts_eval/runs.csv
+
+[experiment]
+name = "qlearning_phase3_bursts_eval"
+num_sensors = [100]
+seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+[topology]                    # must match configs/default.toml, which training used
+area_m = 500.0
+sensor_range_m = 80.0
+dbscan_kappa = 0.8
+dbscan_min_samples = 3
+uav_range_m = 30.0
+alpha = 0.5
+min_candidates = 2
+depot_x = 0.0
+depot_y = 0.0
+
+[simulation]
+simTime = 7200.0
+wakeMode = "scheduled"
+uavSpeedJitter = 0.1
+uavDelayProb = 0.0
+chFailureRate = 2.78e-5
+burstsPerHour = 4.0
+burstDuration = 1800.0
+burstMultiplier = 20.0
+
+[[variant]]
+name = "q_learning"
+routing = "q_learning"
+model = "models/phase3_qlearning/A4_qlearning.json"

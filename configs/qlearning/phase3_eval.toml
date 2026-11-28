@@ -1,0 +1,35 @@
+# Q-learning baseline (Bouhamed et al., docs/Q_LEARNING.md) on the networks and noise of
+# configs/phase3_eval.toml, for the demo page. Results: results/qlearning_phase3_eval/
+# Phase 3 evaluation: trained PPO variants vs the baselines on held-out networks (seeds 1-10;
+# training used 101-300). Same stress as training (configs/phase3_ppo.toml).
+#   python3 -m experiments.run_experiment configs/phase3_eval.toml
+#   python3 -m analysis.aggregate results/phase3_eval/runs.csv
+
+[experiment]
+name = "qlearning_phase3_eval"
+num_sensors = [100]
+seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+[topology]                    # must match configs/default.toml, which training used
+area_m = 500.0
+sensor_range_m = 80.0
+dbscan_kappa = 0.8
+dbscan_min_samples = 3
+uav_range_m = 30.0
+alpha = 0.5
+min_candidates = 2
+depot_x = 0.0
+depot_y = 0.0
+
+[simulation]
+simTime = 7200.0
+wakeMode = "scheduled"
+uavDelayProb = 0.1
+uavDelayMin = 10.0
+uavDelayMax = 30.0
+chFailureRate = 2.78e-5
+
+[[variant]]
+name = "q_learning"
+routing = "q_learning"
+model = "models/phase3_qlearning/A4_qlearning.json"

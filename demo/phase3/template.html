@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>:root{color-scheme:light} body{margin:0;font:14px system-ui,sans-serif} img{max-width:100%} [hidden]{display:none!important}</style>
-<title>ER-PPO Mission Replay</title>
+<title>UAV Wake Scheduling</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
 <style>
-/* Layout: one reading column; the replay breaks out to three side-by-side survey maps. */
+/* Layout: one reading column; the replay breaks out to a grid of survey maps, one per policy. */
 :root {
   --bg: #f2f4f6;
   --panel: #ffffff;
@@ -19,6 +19,9 @@
   --tour: #2e7a57;
   --ppo: #1d64c8;
   --greedy: #b8531c;
+  --nearest: #7a4fc2;
+  --qlearn: #a8326e;
+  --ppoplain: #0f8a9e;
   --other: #8a96a3;
   --font-display: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
   --font-body: "IBM Plex Sans", system-ui, sans-serif;
@@ -28,12 +31,14 @@
   :root:not([data-theme="light"]) {
     --bg: #11171d; --panel: #18212a; --fg: #e3e9ee; --muted: #93a1ae; --rule: #2a3642;
     --field: #1d2731; --tour: #4fb184; --ppo: #5c9cf0; --greedy: #e58149; --other: #74828f;
+    --nearest: #a98ae6; --qlearn: #e06aa6; --ppoplain: #3fc1d4;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #11171d; --panel: #18212a; --fg: #e3e9ee; --muted: #93a1ae; --rule: #2a3642;
   --field: #1d2731; --tour: #4fb184; --ppo: #5c9cf0; --greedy: #e58149; --other: #74828f;
+    --nearest: #a98ae6; --qlearn: #e06aa6; --ppoplain: #3fc1d4;
   color-scheme: dark;
 }
 body {
@@ -42,15 +47,17 @@ body {
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
-main { max-width: 1120px; margin: 0 auto; padding-block: 40px 72px; display: grid; gap: 56px; }
-.col { max-width: 720px; }
+/* The page spans 70 % of the window (15 % to 85 %), but never narrower than 960 px unless
+   the screen itself is. */
+main { width: max(70vw, min(100%, 960px)); margin: 0 auto; padding-block: 40px 72px; display: grid; gap: 56px; }
+.col { max-width: none; }
 h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-wrap: balance; margin: 0; line-height: 1.15; }
 h1 { font-size: clamp(2rem, 5vw, 2.9rem); letter-spacing: -0.01em; }
 h2 { font-size: 1.6rem; }
 h3 { font-size: 1.1rem; }
 p { margin: 0; }
 .eyebrow { font-family: var(--font-data); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
-.lede { font-size: 1.15rem; color: var(--muted); max-width: 64ch; }
+.lede { font-size: 1.15rem; color: var(--muted); }
 section { display: grid; gap: 18px; }
 .stack { display: grid; gap: 12px; }
 header { display: grid; gap: 14px; }
@@ -76,7 +83,10 @@ input[type=range] { flex: 1 1 220px; min-width: 0; accent-color: var(--ppo); }
 .live b { font-weight: 500; font-size: 1rem; }
 .final { font-size: 0.85rem; color: var(--muted); border-top: 1px solid var(--rule); padding-top: 8px; }
 .final b { color: var(--fg); font-weight: 600; }
-.note { font-size: 0.9rem; color: var(--muted); max-width: 80ch; }
+.note { font-size: 0.9rem; color: var(--muted); }
+/* Formulas: LaTeX in the template, turned into MathML by build.py (no internet needed). */
+math { font-size: 1.08em; }
+math[display="block"] { margin: 10px 0; font-size: 1.2em; }
 
 /* charts */
 .charts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
@@ -108,25 +118,97 @@ pre { margin: 0; font-family: var(--font-data); font-size: 0.85rem; background: 
 <body>
 <main>
   <header class="col">
-    <p class="eyebrow">MLOWN course project · Phase 3 · Nihar</p>
-    <h1>Learning where the drone flies next</h1>
-    <p class="lede">A UAV collects sensor data from cluster heads that only wake up when it promises to arrive. In Phase 3 a PPO agent learned the UAV's next stop, inside the ns-3 simulation. Below are real two-hour missions on networks the agent never saw in training, from 100 uniformly spread sensors to 2000 sensors in hotspots.</p>
+    <p class="eyebrow">MLOWN course project · IIT Dharwad · Nihar Sagar G, Prakruthi K S, Shreya S Bhat, Balasani Thiaana</p>
+    <h1>Promise-based wake scheduling for UAV data collection</h1>
+    <p class="lede">A UAV collects data from cluster heads (CHs) of a sensor network with no base station. Two decisions matter: which cluster the UAV visits next, and when each CH turns its Wi-Fi on. We link them with one rule (the UAV promises each CH when it will be back, and the CH sleeps until then), build the whole system in ns-3, and compare heuristics, the shortest tour, PPO and a published Q-learning method.</p>
     <div class="verdict">
-      <span>PPO vs ETA-aware tour: <b>no significant difference</b></span>
-      <span>vs best other baseline: <b>+6.5 pts PDR, 3.6× on-time</b></span>
+      <span>PPO vs shortest tour: <b>no significant difference</b> (PDR 0.973 vs 0.972)</span>
+      <span>vs best heuristic: <b>+6.6 pts PDR, 3.6× meetings on time</b></span>
+      <span>vs Q-learning baseline: <b>+25 pts PDR</b></span>
+      <span>scales from 100 to <b>2000 sensors</b> without retraining</span>
       <span>decision time: <b>1.5 ms</b></span>
     </div>
   </header>
+
+  <section aria-labelledby="sys-h" class="col">
+    <h2 id="sys-h">How the system works</h2>
+    <ol class="steps">
+      <li><b>Clustering and CH election (offline).</b> Sensors are grouped with DBSCAN (eps = 0.8 × 80 m sensor range). A sensor may be CH only if it reaches every member and is within 30 m of the cluster's meeting point; clusters with fewer than two such sensors are split. Each candidate <tex>i</tex> gets the score
+        <tex-block>S_i = 0.5\,\frac{E_i}{E_0} + 0.5\left(1 - \frac{d_i}{R_\mathrm{UAV}}\right)</tex-block>
+        where <tex>E_i</tex> is its remaining energy, <tex>E_0</tex> the starting energy, <tex>d_i</tex> its distance to the meeting point and <tex>R_\mathrm{UAV} = 30</tex> m. The best is primary CH, the second is backup.</li>
+      <li><b>ns-3 simulator (C++).</b> The CH–UAV link is real ns-3 802.11g Wi-Fi (6 Mb/s, 16 dBm) with ns-3's radio energy model at ESP32 currents. The 30 m UAV range comes from a link sweep: the largest distance with ≥ 99 % delivery under fading. Sensor-to-CH hops use CC2420 energy per reading. The UAV flies at 30 m with per-leg speed noise; flight 150 W, hover 170 W. The primary CH copies its buffer to the backup every second and sends heartbeats; three missed heartbeats and the backup takes over.</li>
+      <li><b>Promise-then-honour wake windows.</b> At the end of every visit to cluster <tex>k</tex> at time <tex>t</tex>, the UAV promises to return at
+        <tex-block>T_k = t + P, \qquad \text{CH listens only in } \left[\,T_k - w_e,\; T_k + w_l\,\right]</tex-block>
+        where <tex>P</tex> is the time of one tour lap and <tex>w_e = 20</tex> s. Fixed window: <tex>w_l = 20</tex> s. Adaptive window: <tex>w_l = q_{0.95}</tex>, the 95th percentile of how late the UAV has been at past visits. A missed window falls back to up to five short retries, then low-power discovery. The mission starts with one survey lap that makes the first promises.</li>
+      <li><b>What the UAV knows.</b> It never sees true buffers. For each cluster it keeps a belief: data rate (moving average of what it collected), estimated buffer, CH energy at the last visit, time since contact, promise slack, missed meetings and its lateness record. Every policy plans from this belief only.</li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="alg-h">
+    <div class="stack col">
+      <h2 id="alg-h">Algorithms compared</h2>
+      <p class="note">All of them use the same promise rule and wake windows, so they differ only in the order of visits.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Policy</th><th>How it picks the next cluster</th></tr></thead>
+        <tbody>
+          <tr><td>Shortest tour</td><td>Nearest-neighbour then 2-opt TSP over the meeting points, repeated every lap (fixed or adaptive window)</td></tr>
+          <tr><td>Nearest feasible</td><td>Closest cluster, never the current one and no A-B-A back-and-forth</td></tr>
+          <tr><td>Data greedy</td><td>Cluster with the largest estimated buffer</td></tr>
+          <tr><td>Energy–data score</td><td>Cluster with the highest <tex>0.5\,\frac{B_k}{B_\mathrm{max}} + 0.5\,\frac{E_k}{E_\mathrm{max}}</tex>, where <tex>B_k</tex> is the estimated buffer and <tex>E_k</tex> the CH energy, each divided by its largest value</td></tr>
+          <tr><td>Q-learning (Bouhamed et al., IEEE Access 2020)</td><td>Tabular Q-learning, adapted: our reward and actions, state = time, UAV position and the nearest cluster, split into ranges</td></tr>
+          <tr class="hl"><td>PPO A1–A4 (ours)</td><td>A learned network scores every cluster from its own belief; A1 plain, A2 + lateness estimate, A3 + adaptive window, A4 (ER-PPO) + risk term</td></tr>
+          <tr><td>PPO A4P</td><td>A4 that also chooses the promise length (0.75, 1 or 1.5 laps)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="ppo-h" class="col">
+    <h2 id="ppo-h">The PPO agent</h2>
+    <ol class="steps">
+      <li><b>ns-3 ↔ Python bridge.</b> A new <code>external</code> routing policy in C++ pauses the simulation at every decision, sends the UAV's belief over a pipe and waits for the chosen cluster.</li>
+      <li><b>Observation.</b> 13 features per cluster (flight time, relative position, belief values above, lateness estimate for A2+), plus mission time and UAV position. Clusters are sorted nearest first and padded to 40 slots; invalid choices are masked. A test checks that no future or true-state information leaks in.</li>
+      <li><b>Reward.</b> After each decision
+        <tex-block>R = R_D - 0.2\,R_\mathrm{UAV} - R_\mathrm{miss} - 0.25\,R_\mathrm{CH} - 0.5\,R_\mathrm{risk}</tex-block>
+        <tex>R_D</tex> is the data collected, <tex>R_\mathrm{UAV}</tex> the UAV flight and hover energy, <tex>R_\mathrm{miss}</tex> the promised windows missed, <tex>R_\mathrm{CH}</tex> the CH listening energy and <tex>R_\mathrm{risk}</tex> (A4 only) how late the UAV is expected to reach the chosen cluster. A broken promise is penalised as soon as it can no longer be kept.</li>
+      <li><b>Network.</b> One small network scores every cluster, with one self-attention layer so each score can depend on the others. The same weights work for any number of clusters.</li>
+      <li><b>Training.</b> MaskablePPO on 200 random 100-sensor networks (seeds 101–300), 300 000 decisions (about 20 min on a laptop); evaluation always on unseen seeds 1–10.</li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="fix-h">
+    <div class="stack col">
+      <h2 id="fix-h">What it took to make PPO work</h2>
+      <p class="note">Five held-out networks. The tour reaches 92.4 % on-time, PDR 0.972, 91 J.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Change</th><th>On-time</th><th>PDR</th><th>CH energy</th><th>What happened</th></tr></thead>
+        <tbody>
+          <tr><td>PPO from scratch</td><td class="n">59 %</td><td class="n">–</td><td class="n">–</td><td>Breaks promises while exploring</td></tr>
+          <tr><td>First reward, no CH-energy term</td><td class="n">14–62 %</td><td class="n">0.88–0.91</td><td class="n">200–300 J</td><td>Every learner waited at meeting points and relied on retry listening</td></tr>
+          <tr><td>+ CH energy in reward, start by copying the tour</td><td class="n">82.9 %</td><td class="n">0.952</td><td class="n">124 J</td><td>Drifted to fewer, longer decisions</td></tr>
+          <tr><td>+ discount by mission time, <tex>\gamma^{\Delta t / 15\,\mathrm{s}}</tex></td><td class="n">84.8 %</td><td class="n">0.967</td><td class="n">120 J</td><td>Drift stopped</td></tr>
+          <tr><td>+ copying step that fades out during training</td><td class="n">87.0 %</td><td class="n">0.967</td><td class="n">162 J</td><td></td></tr>
+          <tr class="hl"><td>+ early penalty on promises that can no longer be kept</td><td class="n">90.1 %</td><td class="n">0.969</td><td class="n">131 J</td><td>Final setup</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
 
   <section aria-labelledby="replay-h">
     <div class="stack col">
       <h2 id="replay-h">Mission replay</h2>
       <p class="note" id="dep-note"></p>
-      <p class="note">Within a deployment, all three policies see the same network, traffic and noise. Rings are meeting points, dots are sensors, the triangle is the UAV. Data counts when a visit ends. Except for the event-burst entry, the PPO model is the same one everywhere (ER-PPO A4), trained only on 100-sensor uniform networks.</p>
+      <p class="note">Within a deployment, all policies see the same network, traffic and noise. Rings are meeting points, dots are sensors, the triangle is the UAV. Data counts when a visit ends. Except for the event-burst entry, the PPO model is the same one everywhere (ER-PPO A4), trained only on 100-sensor uniform networks.</p>
     </div>
     <div class="controls">
       <label for="dep" class="eyebrow">Deployment</label>
       <select id="dep"></select>
+      <label for="net" class="eyebrow">Network</label>
+      <select id="net"></select>
     </div>
     <div class="controls">
       <button id="play" class="primary" type="button">Play</button>
@@ -145,37 +227,50 @@ pre { margin: 0; font-family: var(--font-data); font-size: 0.85rem; background: 
   <section aria-labelledby="res-h">
     <div class="stack col">
       <h2 id="res-h">Results on 10 held-out uniform networks (100 sensors)</h2>
-      <p class="note">Mean with 95 % confidence interval over network seeds 1–10. Training used seeds 101–300. Stress: 10 % of flight legs delayed by 10–30 s, random cluster-head failures.</p>
+      <p class="note">Mean with 95 % confidence interval over network seeds 1–10. Stress: 10 % of flight legs delayed by 10–30 s, random CH failures.</p>
     </div>
     <div class="charts" id="charts"></div>
-    <p class="note">Compared network by network with the matching tour, every PPO variant's difference in PDR, on-time rate and cluster-head energy has a 95 % interval that includes zero.</p>
+    <p class="note col">Network by network against the matching tour, every PPO variant's difference in PDR, on-time rate and CH energy has a 95 % interval that includes zero. Data greedy keeps a high PDR only because CHs keep listening in retry windows after it breaks a promise, which shows up as 2.5× the CH energy. Nearest feasible keeps its promises but never reaches far clusters. Q-learning's state describes only the nearest cluster, so on unseen networks it often picks at random (its result varies between runs: PDR 0.68–0.72).</p>
   </section>
 
-  <section aria-labelledby="built-h" class="col">
-    <h2 id="built-h">What Phase 3 built</h2>
-    <ol class="steps">
-      <li><b>A bridge between ns-3 and Python.</b> The simulator pauses at every decision, sends what the UAV knows over a pipe, and waits for the next cluster. A new <code>external</code> routing policy in C++.</li>
-      <li><b>The learning problem.</b> 13 features per cluster, all from the UAV's own records: last reported buffer and energy, promise slack, missed meetings, lateness estimate. No future information, checked by a test.</li>
-      <li><b>The reward.</b> Data delivered, minus UAV energy, broken promises, cluster-head listening energy, and (for ER-PPO) the risk of arriving late.</li>
-      <li><b>The agent.</b> MaskablePPO with a per-cluster scoring network and self-attention, warm-started by copying the tour, then trained for 300 000 decisions (about 20 minutes per variant).</li>
-      <li><b>The ablation.</b> A1 plain PPO, A2 adds the lateness estimate, A3 adds adaptive wake windows, A4 adds the risk term (full ER-PPO).</li>
-    </ol>
-  </section>
-
-  <section aria-labelledby="fix-h">
+  <section aria-labelledby="scale-h">
     <div class="stack col">
-      <h2 id="fix-h">Getting PPO to work</h2>
-      <p class="note">Five held-out networks, uniform traffic. The tour scores 92.4 % on-time, PDR 0.972, 91 J.</p>
+      <h2 id="scale-h">Larger networks, with the reduced noise</h2>
+      <p class="note">After the review: UAV speed uniform in 9–11 m/s on every leg, no extra delays. Hotspot networks from Phase 2, 10 networks each. PPO is the same 100-sensor model, not retrained. PDR:</p>
     </div>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>Change</th><th>On-time</th><th>PDR</th><th>CH energy</th><th>What happened</th></tr></thead>
+        <thead><tr><th>Networks</th><th>Tour</th><th>ER-PPO A4</th><th>Nearest</th><th>Data greedy</th><th>Energy–data</th><th>Q-learning</th></tr></thead>
         <tbody>
-          <tr><td>First reward, no cluster-head energy term</td><td class="n">14–62 %</td><td class="n">0.88–0.91</td><td class="n">200–300 J</td><td>Every learner hovered and relied on retry listening</td></tr>
-          <tr><td>+ cluster-head energy, tour warm start</td><td class="n">82.9 %</td><td class="n">0.952</td><td class="n">124 J</td><td>Drifted toward fewer, longer decisions</td></tr>
-          <tr><td>+ discount per 15 s of mission time</td><td class="n">84.8 %</td><td class="n">0.967</td><td class="n">120 J</td><td>Drift stopped</td></tr>
-          <tr><td>+ tour imitation that fades during training</td><td class="n">87.0 %</td><td class="n">0.967</td><td class="n">162 J</td><td></td></tr>
-          <tr class="hl"><td>+ early penalty on promises that can no longer be kept</td><td class="n">90.1 %</td><td class="n">0.969</td><td class="n">131 J</td><td>Final setup</td></tr>
+          <tr><td>100 sensors, 4 hotspots (4–5 clusters)</td><td class="n">0.994</td><td class="n">0.994</td><td class="n">0.993</td><td class="n">0.992</td><td class="n">0.991</td><td class="n">0.983</td></tr>
+          <tr><td>1000 sensors, 4 hotspots (4–8)</td><td class="n">0.857</td><td class="n">0.857</td><td class="n">0.850</td><td class="n">0.785</td><td class="n">0.720</td><td class="n">0.487</td></tr>
+          <tr><td>2000 sensors, 4 hotspots (6–8)</td><td class="n">0.605</td><td class="n">0.603</td><td class="n">0.604</td><td class="n">0.479</td><td class="n">0.431</td><td class="n">0.274</td></tr>
+          <tr><td>1000 sensors, target 6 clusters</td><td class="n">0.987</td><td class="n">0.987</td><td class="n">0.987</td><td class="n">0.970</td><td class="n">0.969</td><td class="n">0.547</td></tr>
+          <tr><td>1000 sensors, target 10 clusters</td><td class="n">0.989</td><td class="n">0.990</td><td class="n">0.989</td><td class="n">0.798</td><td class="n">0.664</td><td class="n">0.438</td></tr>
+          <tr><td>1000 sensors, target 15 clusters</td><td class="n">0.988</td><td class="n">0.987</td><td class="n">0.969</td><td class="n">0.801</td><td class="n">0.639</td><td class="n">0.361</td></tr>
+          <tr><td>1000 sensors, target 20 clusters</td><td class="n">0.981</td><td class="n">0.979</td><td class="n">0.777</td><td class="n">0.725</td><td class="n">0.558</td><td class="n">0.296</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note col">PPO stays within 0.2 points of the tour everywhere; the heuristics lose up to 42 points as clusters are added, and Q-learning does not carry over to larger networks. The drop at 1000/2000 sensors with 4 hotspots is not routing: each CH serves 170–290 sensors and its buffer overflows before any UAV can return (tour loses 14 % and 39 % to overflow). UAV energy per delivered reading stays at about 1.55 J for the tour and PPO, against 2.1–2.8 J for the heuristics at 15–20 clusters. With no extra delays the tour keeps every meeting.</p>
+  </section>
+
+  <section aria-labelledby="ana-h">
+    <div class="stack col">
+      <h2 id="ana-h">Analysis: what each part contributes, and robustness</h2>
+      <p class="note">Shortest tour with the adaptive window unless stated, 10 networks of 100 sensors, mean values.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Study</th><th>Setting</th><th>PDR</th><th>On-time</th><th>CH energy</th><th>Finding</th></tr></thead>
+        <tbody>
+          <tr><td>ETA quantile for the late window</td><td>p80 → p95 → p99</td><td class="n">0.969 → 0.970 → 0.970</td><td class="n">76 → 88 → 90 %</td><td class="n">321 → 302 → 296 J</td><td>Wider late side keeps more meetings and costs less, because missed windows cost retries</td></tr>
+          <tr><td>Adaptive vs fixed window (PPO)</td><td>A2 → A3</td><td class="n">0.971 → 0.972</td><td class="n">82 → 89 %</td><td class="n">108 → 113 J</td><td>Clearest gain among the ablations; the risk term (A4) adds little on top</td></tr>
+          <tr><td>UAV delays</td><td>0 → 10 → 50 → 100 % of legs delayed</td><td class="n">0.973 → 0.932</td><td class="n">100 → 91 → 76 → 53 %</td><td class="n">17 → 95 → 277 → 409 J</td><td>Delays, not speed noise, cause the misses; CHs pay in listening energy</td></tr>
+          <tr><td>CH hardware failures</td><td>0 → 1e-4 → 1e-3 per s</td><td class="n">0.973 → 0.950 → 0.472</td><td class="n">91 → 87 → 40 %</td><td class="n">98 → 65 J</td><td>Backup takeover keeps PDR at the realistic rate; at extreme rates clusters run out of candidates</td></tr>
+          <tr><td>CH clock offset</td><td>0 → 10 s</td><td class="n">0.972 → 0.972</td><td class="n">91 → 88 %</td><td class="n">95 → 126 J</td><td>The window absorbs small offsets; large ones cost energy, not data</td></tr>
+          <tr><td>Wake half-width (no delays)</td><td>5 → 40 s</td><td class="n">0.975 → 0.977</td><td class="n">99–100 %</td><td class="n">≈ 17 J</td><td>Without delays even a 5 s window is enough</td></tr>
+          <tr><td>Network size (PPO A4 vs tour)</td><td>60 / 150 sensors</td><td class="n">0.970 / 0.972 vs 0.975 / 0.974</td><td class="n">88 / 90 vs 91 / 92 %</td><td class="n">130 / 102 vs 109 / 96 J</td><td>PPO tracks the tour at sizes it was not trained on</td></tr>
         </tbody>
       </table>
     </div>
@@ -184,33 +279,62 @@ pre { margin: 0; font-family: var(--font-data); font-size: 0.85rem; background: 
   <section aria-labelledby="why-h">
     <div class="stack col">
       <h2 id="why-h">Why PPO matches the tour instead of beating it</h2>
-      <p class="note">Tested on 5 held-out hotspot networks with small buffers, where the tour loses 8.9 % of data to overflow. If any policy could beat the tour, it would be here.</p>
+      <p class="note">With promises, every CH sleeps until the time it was told. Any change of order makes the UAV late somewhere else. We tested this in two hard cases.</p>
     </div>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>Policy</th><th>PDR</th><th>Overflow</th><th>On-time</th><th>CH energy</th></tr></thead>
+        <thead><tr><th>Test</th><th>Policy</th><th>PDR</th><th>On-time</th><th>CH energy</th></tr></thead>
         <tbody>
-          <tr><td>Tour</td><td class="n">0.896</td><td class="n">8.9 %</td><td class="n">95 %</td><td class="n">103 J</td></tr>
-          <tr class="hl"><td>PPO trained on these networks</td><td class="n">0.896</td><td class="n">8.9 %</td><td class="n">95 %</td><td class="n">103 J</td></tr>
-          <tr><td>Rule: detour to clusters ≥ 70 % full</td><td class="n">0.716</td><td class="n">25.7 %</td><td class="n">53 %</td><td class="n">287 J</td></tr>
-          <tr><td>Rule: shorter promises at busy clusters</td><td class="n">0.818</td><td class="n">16.1 %</td><td class="n">71 %</td><td class="n">242 J</td></tr>
+          <tr><td rowspan="4">Small buffers, 20 hotspots (tour loses 8.9 % to overflow)</td><td>Tour</td><td class="n">0.896</td><td class="n">95 %</td><td class="n">103 J</td></tr>
+          <tr class="hl"><td>PPO trained on these networks</td><td class="n">0.896</td><td class="n">95 %</td><td class="n">103 J</td></tr>
+          <tr><td>Rule: detour to clusters ≥ 70 % full</td><td class="n">0.716</td><td class="n">53 %</td><td class="n">287 J</td></tr>
+          <tr><td>Rule: shorter promises at busy clusters</td><td class="n">0.818</td><td class="n">71 %</td><td class="n">242 J</td></tr>
+          <tr><td rowspan="4">Event bursts: 4 per hour, one cluster reads 20× faster for 30 min (tour loses 28 % of burst data)</td><td>Tour</td><td class="n">0.817</td><td class="n">100 %</td><td class="n">16 J</td></tr>
+          <tr class="hl"><td>PPO A4P trained on bursts</td><td class="n">0.817</td><td class="n">100 %</td><td class="n">16 J</td></tr>
+          <tr><td>Same, copying step fading out early</td><td class="n">0.772</td><td class="n">81 %</td><td class="n">119 J</td></tr>
+          <tr><td>Data greedy</td><td class="n">0.624</td><td class="n">25 %</td><td class="n">251 J</td></tr>
         </tbody>
       </table>
     </div>
-    <p class="note col">PPO chose the tour's next stop at 100 % of decisions. Hand-written detours fly 279 m per visit against the tour's 129 m, and every skipped cluster misses the window it was promised. Under promise-based wake-up, changing the visiting order costs more than it gains, so the tour is close to optimal here.</p>
+    <p class="note col">PPO either learns the tour exactly or leaves it and does worse, like the heuristics. Detours fly 279 m per visit against the tour's 129 m, and every skipped cluster misses its window. Under bursts the UAV only learns of a burst at its next visit, and going back early breaks other promises. So with promise-based wake-up the tour is close to the best order, and PPO learning to match it is the expected result, not a training failure.</p>
+  </section>
+
+  <section aria-labelledby="lim-h" class="col">
+    <h2 id="lim-h">Limitations and next steps</h2>
+    <ol class="steps">
+      <li>Agents were trained on 100-sensor networks with the older noise; retraining on the reduced noise and larger networks (config in the repo) did not finish in time.</li>
+      <li>To beat the tour a policy needs earlier news of a burst (for example a short status message from a CH) or a way to change promises already made.</li>
+      <li>The Q-learning baseline is our adaptation with a small state and less training, not a faithful reproduction of the original paper.</li>
+      <li>UAV battery and return to the depot are not modelled; ablations A7–A9 (no backup CH, takeover on a missed meeting, no survey lap) are implemented, with full results still to run.</li>
+    </ol>
   </section>
 
   <section aria-labelledby="live-h" class="col">
-    <h2 id="live-h">Live demo in the terminal</h2>
+    <h2 id="live-h">Run it live</h2>
     <p class="note">From the repository folder. Each runs real ns-3 missions on held-out networks.</p>
     <div class="cmd">
-      <div class="cmd-head"><span>One mission per policy on network 3, PPO and tour side by side (about 10 s)</span><button type="button" data-copy="c1">Copy</button></div>
+      <div class="cmd-head"><span>PPO and the tour on network 3, side by side (about 10 s)</span><button type="button" data-copy="c1">Copy</button></div>
       <pre id="c1">python3 -m routing.redteam models/phase3_ppo/A4_ppo-scoring_ws.zip tour agreement --seeds 3</pre>
     </div>
     <div class="cmd">
       <div class="cmd-head"><span>Full evaluation: 10 policies × 10 networks with confidence intervals (about 1 min)</span><button type="button" data-copy="c2">Copy</button></div>
       <pre id="c2">python3 -m experiments.run_experiment configs/phase3_eval.toml -j 8
 python3 -m analysis.aggregate results/phase3_eval/runs.csv</pre>
+    </div>
+  </section>
+
+  <section aria-labelledby="team-h" class="col">
+    <h2 id="team-h">Who built what</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Phase</th><th>Who</th><th>Work</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Shreya S Bhat</td><td>Simulator realism: energy calibration, 30 m range sweep, UAV delay and clock drift, backup CH takeover, retry windows</td></tr>
+          <tr><td>2</td><td>Prakruthi K S</td><td>UAV belief state, routing baselines, Gaussian hotspots, ETA lateness and adaptive window, CH-count sweep, 9–11 m/s speed option</td></tr>
+          <tr><td>3</td><td>Nihar Sagar G</td><td>ns-3 ↔ Python bridge, MDP and reward, PPO agent and training, scaling and burst experiments, this page</td></tr>
+          <tr><td>4</td><td>Balasani Thiaana</td><td>Paired statistics, robustness sweeps, lifetime, ablations A7–A9, Q-learning baseline</td></tr>
+        </tbody>
+      </table>
     </div>
   </section>
 </main>
@@ -220,19 +344,22 @@ const DATA = __DATA__;
 const POLICIES = [
   { key: "tour", name: "ETA-aware tour", color: "--tour" },
   { key: "ppo_A4", name: "ER-PPO (A4)", color: "--ppo" },
+  { key: "ppo_A1", name: "Plain PPO (A1)", color: "--ppoplain" },
+  { key: "nearest_feasible", name: "Nearest feasible", color: "--nearest" },
   { key: "data_greedy", name: "Data greedy", color: "--greedy" },
+  { key: "q_learning", name: "Q-learning (Bouhamed et al.)", color: "--qlearn" },
 ];
 const T_END = 7200;
 const css = () => getComputedStyle(document.documentElement);
 let colors = {};
 function readColors() {
   const c = css();
-  for (const k of ["--fg", "--muted", "--rule", "--field", "--panel", "--tour", "--ppo", "--greedy", "--other"]) colors[k] = c.getPropertyValue(k).trim();
+  for (const k of ["--fg", "--muted", "--rule", "--field", "--panel", "--tour", "--ppo", "--greedy", "--nearest", "--qlearn", "--ppoplain", "--other"]) colors[k] = c.getPropertyValue(k).trim();
 }
 readColors();
 
 const runs = POLICIES.map(p => ({ ...p }));
-let DEP = DATA.deployments[0];
+let DEP = DATA.deployments[0], NET = null;
 
 const mapsEl = document.getElementById("maps");
 for (const p of runs) {
@@ -253,13 +380,28 @@ for (const p of runs) {
   p.out = Object.fromEntries([...el.querySelectorAll("[data-k]")].map(b => [b.dataset.k, b]));
   p.final = el.querySelector(".final");
   p.title = el.querySelector(".pname");
+  p.el = el;
 }
 
-// Load one deployment into the three maps: arrays for fast lookup, plus the text around them.
+// Each deployment was run on 10 held-out networks: different random sensor placements, none
+// used in training. The Network menu picks one; network 3 is shown first.
 function setDeployment(i) {
   DEP = DATA.deployments[i];
+  const keep = NET ? NET.seed : DATA.seed;
+  netSel.innerHTML = "";
+  DEP.networks.forEach((n, k) => netSel.add(new Option(`Network ${n.seed} · ${n.clusters.length} clusters`, k)));
+  const k = Math.max(0, DEP.networks.findIndex(n => n.seed === keep));
+  netSel.value = k;
+  setNetwork(k);
+}
+
+// Load one network into the maps: arrays for fast lookup, plus the text around them.
+function setNetwork(k) {
+  NET = DEP.networks[k];
   for (const p of runs) {
-    p.r = DEP.runs[p.key];
+    p.el.hidden = !NET.runs[p.key];
+    if (p.el.hidden) continue;
+    p.r = NET.runs[p.key];
     p.v = p.r.visits; // [cluster, depart, arrive, end, readings]
     p.cum = []; let s = 0;
     for (const x of p.v) { s += x[4]; p.cum.push(s); }
@@ -268,16 +410,22 @@ function setDeployment(i) {
   }
   const m = DEP.mean, pct = v => (v * 100).toFixed(1) + " %";
   document.getElementById("dep-note").innerHTML =
-    `Held-out network ${DATA.seed}: ${DEP.sensors.toLocaleString()} sensors, ${DEP.layout}, ${DEP.clusters.length} clusters, 500 m × 500 m. Noise: ${DEP.noise}. ` +
-    `Mean PDR over all ${DEP.seeds} networks of this deployment: tour <b>${pct(m.tour.pdr)}</b>, ${DEP.ppoName} <b>${pct(m.ppo_A4.pdr)}</b>, data greedy <b>${pct(m.data_greedy.pdr)}</b>.`;
+    `Showing held-out network ${NET.seed} of ${DEP.networks.length} (a different random placement of the sensors; pick another under Network): ` +
+    `${DEP.sensors.toLocaleString()} sensors, ${DEP.layout}, ${NET.clusters.length} clusters, 500 m × 500 m. Noise: ${DEP.noise}. ` +
+    `Mean PDR over all ${DEP.seeds} networks of this deployment: ` +
+    runs.filter(p => m[p.key]).map(p => `${p.key === "ppo_A4" ? DEP.ppoName : p.name} <b>${pct(m[p.key].pdr)}</b>`).join(", ") + ".";
 }
-const depSel = document.getElementById("dep");
-DATA.deployments.forEach((d, i) => depSel.add(new Option(d.label, i)));
+const depSel = document.getElementById("dep"), netSel = document.getElementById("net");
+// Menu label plus the cluster counts its 10 networks actually have (clustering varies per layout).
+DATA.deployments.forEach((d, i) => {
+  const k = d.networks.map(n => n.clusters.length), lo = Math.min(...k), hi = Math.max(...k);
+  depSel.add(new Option(`${d.label} (${lo === hi ? lo : lo + "–" + hi} clusters across networks)`, i));
+});
 setDeployment(0);
 
 const SPAN = 500, PAD = 18;
 function toPx(x, y, size) { const s = (size - 2 * PAD) / SPAN; return [PAD + x * s, size - PAD - y * s]; }
-function meet(c) { return DEP.clusters[c]; }
+function meet(c) { return NET.clusters[c]; }
 
 function indexAt(v, t) { // last visit with depart <= t
   let lo = 0, hi = v.length - 1, ans = -1;
@@ -306,9 +454,9 @@ function draw(p, t) {
     ctx.beginPath(); ctx.moveTo(a0, b0); ctx.lineTo(a1, b1); ctx.stroke();
   }
   // sensors (smaller and fainter when there are many)
-  const big = DEP.nodes.length > 300, d = big ? 2 : 3;
+  const big = NET.nodes.length > 300, d = big ? 2 : 3;
   ctx.fillStyle = colors["--muted"]; ctx.globalAlpha = big ? 0.35 : 0.55;
-  for (const n of DEP.nodes) { const [x, y] = toPx(n[0], n[1], size); ctx.fillRect(x - d / 2, y - d / 2, d, d); }
+  for (const n of NET.nodes) { const [x, y] = toPx(n[0], n[1], size); ctx.fillRect(x - d / 2, y - d / 2, d, d); }
   ctx.globalAlpha = 1;
   const i = indexAt(p.v, t);
   const col = colors[p.color];
@@ -324,7 +472,7 @@ function draw(p, t) {
   ctx.globalAlpha = 1;
   // meeting points
   const here = i >= 0 ? posAt(p, i, t) : null;
-  DEP.clusters.forEach((m, c) => {
+  NET.clusters.forEach((m, c) => {
     const [x, y] = toPx(m[0], m[1], size);
     const active = here && here.hovering && here.c === c;
     ctx.beginPath(); ctx.arc(x, y, active ? 11 : 6, 0, Math.PI * 2);
@@ -358,7 +506,7 @@ const scrub = document.getElementById("scrub"), clock = document.getElementById(
 const playBtn = document.getElementById("play"), speedSel = document.getElementById("speed");
 let t = 2400, playing = false, last = 0;
 function fmt(s) { s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); }
-function render() { for (const p of runs) draw(p, t); scrub.value = Math.round(t); clock.textContent = `${fmt(t)} / 2:00:00`; }
+function render() { for (const p of runs) if (!p.el.hidden) draw(p, t); scrub.value = Math.round(t); clock.textContent = `${fmt(t)} / 2:00:00`; }
 function frame(ts) {
   if (!playing) return;
   const dt = last ? (ts - last) / 1000 : 0; last = ts;
@@ -374,20 +522,21 @@ playBtn.addEventListener("click", () => {
 });
 scrub.addEventListener("input", () => { t = Number(scrub.value); render(); });
 depSel.addEventListener("change", () => { setDeployment(Number(depSel.value)); render(); });
+netSel.addEventListener("change", () => { setNetwork(Number(netSel.value)); render(); });
 
 // results charts
 const LABELS = {
   tour_fixed: "Tour, fixed window", tour_adaptive: "Tour, adaptive window",
-  nearest_feasible: "Nearest feasible", data_greedy: "Data greedy", energy_data_score: "Energy-data score",
+  nearest_feasible: "Nearest feasible", data_greedy: "Data greedy", energy_data_score: "Energy-data score", q_learning: "Q-learning (Bouhamed)",
   ppo_A1: "PPO A1", ppo_A2: "PPO A2 (+ lateness)", ppo_A3: "PPO A3 (+ adaptive)", ppo_A4: "ER-PPO A4 (+ risk)", ppo_A4P: "PPO A4P (+ promise length)",
 };
-const ORDER = ["nearest_feasible", "data_greedy", "energy_data_score", "tour_fixed", "tour_adaptive", "ppo_A1", "ppo_A2", "ppo_A3", "ppo_A4", "ppo_A4P"];
+const ORDER = ["nearest_feasible", "data_greedy", "energy_data_score", "q_learning", "tour_fixed", "tour_adaptive", "ppo_A1", "ppo_A2", "ppo_A3", "ppo_A4", "ppo_A4P"];
 const METRICS = [
   { key: "data.pdr", title: "Packet delivery ratio", lo: 0.5, hi: 1, ticks: [0.5, 0.75, 1], f: v => v.toFixed(3) },
   { key: "wake.meeting_success_rate", title: "Meetings on time", lo: 0, hi: 1, ticks: [0, 0.5, 1], f: v => Math.round(v * 100) + " %" },
   { key: "energy.primary_ch_mean_J", title: "Cluster-head energy (J), lower is better", lo: 0, hi: 300, ticks: [0, 150, 300], f: v => Math.round(v) },
 ];
-function colorFor(v) { return v.startsWith("ppo") ? "--ppo" : v.startsWith("tour") ? "--tour" : "--other"; }
+function colorFor(v) { return v.startsWith("ppo") ? "--ppo" : v.startsWith("tour") ? "--tour" : v === "q_learning" ? "--qlearn" : "--other"; }
 function drawCharts() {
   const box = document.getElementById("charts"); box.innerHTML = "";
   const W = 340, LW = 150, RH = 24, top = 8, H = top + ORDER.length * RH + 26;
@@ -398,7 +547,7 @@ function drawCharts() {
     ORDER.forEach((v, k) => {
       const [mean, ci] = DATA.summary[v][m.key];
       const y = top + k * RH + RH / 2, c = colors[colorFor(v)];
-      if (k === 3 || k === 5) s += `<line x1="0" x2="${W}" y1="${top + k * RH}" y2="${top + k * RH}" stroke="${colors["--rule"]}" stroke-dasharray="2 3"/>`;
+      if (k === 3 || k === 4 || k === 6) s += `<line x1="0" x2="${W}" y1="${top + k * RH}" y2="${top + k * RH}" stroke="${colors["--rule"]}" stroke-dasharray="2 3"/>`;
       s += `<text class="lab" x="0" y="${y + 4}">${LABELS[v]}</text>`;
       s += `<rect x="${x(m.lo)}" y="${y - 6}" width="${Math.max(1, x(mean) - x(m.lo))}" height="12" rx="2" fill="${c}" opacity="0.85"/>`;
       s += `<line x1="${x(mean - ci)}" x2="${x(mean + ci)}" y1="${y}" y2="${y}" stroke="${colors["--fg"]}" stroke-width="1.5"/>`;

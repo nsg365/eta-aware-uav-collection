@@ -1,0 +1,44 @@
+# Q-learning baseline (Bouhamed et al., docs/Q_LEARNING.md) on the networks and noise of
+# configs/phase3_ch_sweep_20.toml, for the demo page. Results: results/qlearning_phase3_ch_sweep_20/
+# Prakruthi's CH-count sweep (scripts/run_ch_sweep.py, same networks; speed noise is
+# uniform 9-11 m/s instead of her std 1 m/s) plus the
+# Phase 3 PPO models, used as they are (trained on 100-sensor uniform networks).
+#   python3 -m experiments.run_experiment configs/phase3_ch_sweep_20.toml -j 8
+# Target cluster count: ~20
+# Topology params: hotspot_count=15, max_cluster_size=75
+
+[experiment]
+name = "qlearning_phase3_ch_sweep_20"
+num_sensors = [1000]
+seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+[topology]
+area_m = 500.0
+sensor_range_m = 80.0
+dbscan_kappa = 0.8
+dbscan_min_samples = 3
+uav_range_m = 30.0
+alpha = 0.5
+min_candidates = 2
+depot_x = 0.0
+depot_y = 0.0
+deployment_mode = "gaussian_hotspot"
+hotspot_count = 15
+hotspot_std_m = 25.0
+max_cluster_size = 75
+
+[simulation]
+simTime = 7200.0
+uavSpeed = 10.0
+uavSpeedJitter = 0.1            # sir's setting: uniform 9-11 m/s per leg (replaces the std-1 speed noise)
+wakeMode = "scheduled"
+etaMinSamples = 5
+adaptiveLateMargin = 20.0
+uavDelayProb = 0.0
+uavDelayMin = 1.0
+uavDelayMax = 5.0
+
+[[variant]]
+name = "q_learning"
+routing = "q_learning"
+model = "models/phase3_qlearning/A4_qlearning.json"
