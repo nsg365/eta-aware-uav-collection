@@ -47,14 +47,17 @@ struct Cluster
     int32_t backup;
     uint32_t size;
     uint32_t tourIndex;
-    std::vector<uint32_t> feasibleCandidates; // Eq. (2) candidates retained for failover re-election
+    std::vector<uint32_t> feasibleCandidates;
 
-    uint64_t buffer = 0;       // readings held by the current primary CH
-    uint64_t backupBuffer = 0; // last replicated buffer at the backup CH
+    uint64_t buffer = 0;
+    uint64_t backupBuffer = 0;
 
     // Reliability accounting
     uint64_t lostDuringFailover = 0;
     uint32_t primaryFailures = 0;
+    uint32_t missedMeetingTriggers = 0;
+    uint32_t postDeathContactTriggers = 0;
+    uint32_t heartbeatFailureTriggers = 0;
     uint32_t backupPromotions = 0;
     double lastFailoverTime = -1.0;
     uint32_t failuresNoBackup = 0;
@@ -64,27 +67,48 @@ struct Cluster
 
     // Primary failure detection
     uint32_t missedHeartbeatCount = 0;
-    uint32_t lastMissedMeetingCount = 0; // A8: missed meetings already processed as failover signals
+
+    // A8: snapshots of events already processed
+    uint32_t lastMissedMeetingCount = 0; // Newly observed missed windows already processed
+    uint32_t lastFailedContactCount = 0;  // UAV timeouts already observed after physical CH death
+
+    // Prevent duplicate no-backup accounting while a takeover is pending.
+    bool takeoverFailureCounted = false;
+
     bool primaryFailureDetected = false;
     double primaryFailureDetectedTime = -1.0;
     uint64_t bufferLostAtFailure = 0;
 
     // Data accounting [readings]
-    uint64_t generated = 0, overflow = 0, lost154 = 0, lostChDead = 0;
-    uint64_t burstGenerated = 0, burstOverflow = 0; // readings generated during a burst, and lost to overflow
-    uint64_t sentWifi = 0, delivered = 0;
+    uint64_t generated = 0;
+    uint64_t overflow = 0;
+    uint64_t lost154 = 0;
+    uint64_t lostChDead = 0;
+
+    uint64_t burstGenerated = 0;
+    uint64_t burstOverflow = 0;
+
+    uint64_t sentWifi = 0;
+    uint64_t delivered = 0;
 
     // Contact / wake accounting
-    uint32_t visits = 0, contacts = 0, failedContacts = 0;
+    uint32_t visits = 0;
+    uint32_t contacts = 0;
+    uint32_t failedContacts = 0;
+
     uint32_t discoveryContacts = 0;
-    uint32_t windowsScheduled = 0, windowsOpened = 0;
-    uint32_t windowsMet = 0, windowsMissed = 0;
+
+    uint32_t windowsScheduled = 0;
+    uint32_t windowsOpened = 0;
+    uint32_t windowsMet = 0;
+    uint32_t windowsMissed = 0;
+
     double windowListenTime = 0;
     double wifiAwakeTime = 0;
 
     // Scheduled-contact retry reliability accounting
     uint32_t retryAttempts = 0;
-    uint32_t retrySuccesses = 0;  // missed promises recovered in a retry window
+    uint32_t retrySuccesses = 0;
     uint32_t promiseViolations = 0;
     uint32_t retryExhaustions = 0;
     uint32_t rebootstrapCount = 0;
