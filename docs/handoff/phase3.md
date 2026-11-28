@@ -351,3 +351,31 @@ PPO either follows the tour exactly or leaves it and does worse: every detour to
 breaks promises made to the others, and the UAV only learns of a burst at its next visit to
 that cluster. To beat the tour a policy would need earlier news of a burst or a way to change
 promises already made. All tables and plots: `results_phase3_ppo/README.md`.
+
+## 14. Q-learning baseline on every deployment, demo page and paper (28 Nov)
+
+Thiaana's tabular Q-learning baseline (`routing/q_learning.py`, `docs/Q_LEARNING.md`, adapted
+from Bouhamed et al., IEEE Access 2020) was run on the same networks as every Phase 3 evaluation:
+`configs/qlearning/*.toml`, results in `results/qlearning_<experiment>/`.
+
+| Deployment | Tour | PPO A4 | Q-learning |
+|---|---|---|---|
+| Uniform 100, stress noise (10 networks) | 0.972 | 0.973 | 0.718 |
+| Gaussian 1000 / 2000 sensors | 0.857 / 0.605 | 0.857 / 0.603 | 0.487 / 0.274 |
+| CH sweep, 6 / 20 clusters | 0.987 / 0.981 | 0.987 / 0.979 | 0.547 / 0.296 |
+| Event bursts | 0.817 | 0.817 (trained on bursts) | 0.451 |
+
+Its state describes only the nearest cluster, so it cannot tell the other candidates apart, and
+on unseen networks it often meets states it never saw, where all values are equal and it picks at
+random. Its result therefore varies between runs on the same networks (0.677 and 0.718 on the
+uniform set). The saved table has 52,862 updates while exploration was set to decay over 100,000,
+so it is a weak version of the method, not a fair measure of the original paper.
+
+**Demo page** (`demo/phase3/`): one page for the whole project (system, algorithms, PPO, results,
+robustness, limits). The mission replay shows six policies (tour, ER-PPO A4, plain PPO A1,
+nearest feasible, data greedy, Q-learning) on nine deployments, each with its 10 held-out
+networks. Formulas are written in LaTeX in `template.html` and turned into MathML by `build.py`
+(`latex2mathml`, no internet needed).
+
+**Paper** (`paper/`): `main.tex` with four figures (`make_figures.py` draws Figs. 2–4 from the
+results). Next steps, including sir's reward suggestion after the demo: `docs/NEXT_STEPS.md`.
