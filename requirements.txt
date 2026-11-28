@@ -12,3 +12,6 @@ gymnasium==1.2.3
 stable-baselines3==2.8.0
 sb3-contrib==2.8.0
 torch==2.11.0
+
+# Demo page (demo/phase3/build.py): LaTeX formulas to MathML.
+latex2mathml==3.81.1
